@@ -64,16 +64,20 @@ fun SurveyNavGraph(navController: NavHostController = rememberNavController()) {
                 LaptopSelectViewModel(app.laptopEndpointRepository, app.nsdDiscoveryService, app.surveyRepository, recordId)
             }
             val saved by viewModel.savedEndpoints.collectAsState()
+            val discovered by viewModel.discovered.collectAsState()
             val scope = rememberCoroutineScope()
             LaptopSelectScreen(
                 savedEndpoints = saved,
+                discoveredLaptops = discovered,
                 onSelect = { laptopId ->
                     scope.launch {
                         viewModel.send(laptopId)
                         navController.popBackStack("home", inclusive = false)
                     }
                 },
-                onAddManual = { /* opens a dialog — left to a follow-up UI-polish task */ },
+                onAddManual = { name, host, port ->
+                    scope.launch { viewModel.addManualEndpoint(name, host, port) }
+                },
             )
         }
     }
