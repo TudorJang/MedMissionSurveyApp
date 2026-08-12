@@ -57,8 +57,7 @@ fun SurveyNavGraph(navController: NavHostController = rememberNavController()) {
             val record by viewModel.record.collectAsState()
             FormScreen(
                 record = record,
-                onFirstNameChange = { viewModel.updateField { r -> r.copy(firstName = it) } },
-                onLastNameChange = { viewModel.updateField { r -> r.copy(lastName = it) } },
+                onFieldChange = { viewModel.updateField(it) },
                 onToggleMedicalHistory = { viewModel.toggleMedicalHistory(it) },
                 onToggleSymptom = { viewModel.toggleSymptom(it) },
                 onDone = { navController.navigate("laptopSelect/${record.recordId}") },
