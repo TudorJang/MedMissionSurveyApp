@@ -39,6 +39,15 @@ private class FakeSurveyApiClient(private val result: Result<Unit>) : SurveyApiC
     }
 }
 
+/** Fails the first call, succeeds afterwards, and records every payload it saw. */
+private class FailsOnceThenSucceedsApiClient : SurveyApiClient {
+    val payloads = mutableListOf<SurveyPayloadDto>()
+    override suspend fun sendSurvey(baseUrl: String, apiKey: String, payload: SurveyPayloadDto): Result<Unit> {
+        payloads += payload
+        return if (payloads.size == 1) Result.failure(IOException("boom")) else Result.success(Unit)
+    }
+}
+
 class SurveyRepositoryTest {
     private val laptop = LaptopEndpoint(id = "laptop-1", name = "1번 X-ray실", host = "192.168.1.10", port = 8080)
 
@@ -98,6 +107,61 @@ class SurveyRepositoryTest {
         val stored = surveyDao.getById(record.recordId)!!
         assertEquals(SyncStatus.FAILED, stored.status)
         assertEquals(SurveyRepository.MAX_SEND_ATTEMPTS, stored.sendAttempts)
+    }
+
+    @Test
+    fun `a retry re-sends the same recordId so the bridge can upsert idempotently`() = runTest {
+        val surveyDao = FakeSurveyDao()
+        val endpointDao = FakeLaptopEndpointDao().apply { endpoints[laptop.id] = laptop }
+        val record = SurveyRecord(firstName = "Ana", lastName = "Reyes")
+        surveyDao.records[record.recordId] = record
+        val apiClient = FailsOnceThenSucceedsApiClient()
+        val repository = SurveyRepository(surveyDao, apiClient, endpointDao, apiKey = "key")
+
+        val first = repository.sendToLaptop(record.recordId, laptop.id)
+        val second = repository.sendToLaptop(record.recordId, laptop.id)
+
+        assertTrue(first.isFailure)
+        assertTrue(second.isSuccess)
+        assertEquals(2, apiClient.payloads.size)
+        // The identity the bridge upserts on must be stable across the retry.
+        assertEquals(record.recordId, apiClient.payloads[0].recordId)
+        assertEquals(record.recordId, apiClient.payloads[1].recordId)
+        assertEquals(apiClient.payloads[0].recordId, apiClient.payloads[1].recordId)
+        // ...and so must the survey content itself.
+        assertEquals(apiClient.payloads[0].patient, apiClient.payloads[1].patient)
+
+        val stored = surveyDao.getById(record.recordId)!!
+        assertEquals(SyncStatus.SENT, stored.status)
+    }
+
+    @Test
+    fun `sendToLaptop counts an attempt when the laptop endpoint no longer exists`() = runTest {
+        val surveyDao = FakeSurveyDao()
+        val endpointDao = FakeLaptopEndpointDao() // endpoint deliberately absent
+        val record = SurveyRecord(sendAttempts = 3)
+        surveyDao.records[record.recordId] = record
+        val repository = SurveyRepository(surveyDao, FakeSurveyApiClient(Result.success(Unit)), endpointDao, apiKey = "key")
+
+        val result = repository.sendToLaptop(record.recordId, "deleted-laptop")
+
+        assertTrue(result.isFailure)
+        val stored = surveyDao.getById(record.recordId)!!
+        assertEquals(4, stored.sendAttempts)
+        assertEquals(SyncStatus.PENDING, stored.status)
+    }
+
+    @Test
+    fun `a record with a stale laptop id eventually reaches FAILED instead of retrying forever`() = runTest {
+        val surveyDao = FakeSurveyDao()
+        val endpointDao = FakeLaptopEndpointDao()
+        val record = SurveyRecord(sendAttempts = SurveyRepository.MAX_SEND_ATTEMPTS - 1)
+        surveyDao.records[record.recordId] = record
+        val repository = SurveyRepository(surveyDao, FakeSurveyApiClient(Result.success(Unit)), endpointDao, apiKey = "key")
+
+        repository.sendToLaptop(record.recordId, "deleted-laptop")
+
+        assertEquals(SyncStatus.FAILED, surveyDao.getById(record.recordId)!!.status)
     }
 
     @Test

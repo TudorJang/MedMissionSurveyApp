@@ -35,12 +35,18 @@ class HomeViewModelTest {
         Dispatchers.resetMain()
     }
 
+    // Note: HomeViewModel does not sort — ordering is the DAO's "ORDER BY createdAt DESC"
+    // and is covered for real in SurveyDaoTest. What matters here is that the ViewModel
+    // passes the repository's order through untouched, so feed it deliberately unsorted
+    // input and assert the same order comes out.
     @Test
-    fun `records reflects repository state, newest first`() = runTest(testDispatcher) {
+    fun `records passes the repository's order through untouched`() = runTest(testDispatcher) {
         val newest = SurveyRecord(status = SyncStatus.DRAFT, createdAt = 2000L)
         val oldest = SurveyRecord(status = SyncStatus.SENT, createdAt = 1000L)
+        val middle = SurveyRecord(status = SyncStatus.PENDING, createdAt = 1500L)
+        val unsorted = listOf(middle, oldest, newest)
         val repository: SurveyRepository = mock()
-        whenever(repository.observeAll()).thenReturn(flowOf(listOf(newest, oldest)))
+        whenever(repository.observeAll()).thenReturn(flowOf(unsorted))
 
         val viewModel = HomeViewModel(repository)
 
@@ -50,7 +56,7 @@ class HomeViewModelTest {
         val collectorJob = launch { viewModel.records.collect {} }
         advanceUntilIdle()
 
-        assertEquals(listOf(newest, oldest), viewModel.records.first())
+        assertEquals(unsorted, viewModel.records.first())
         collectorJob.cancel()
     }
 }

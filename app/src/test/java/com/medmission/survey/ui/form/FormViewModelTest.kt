@@ -18,9 +18,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import com.medmission.survey.data.model.SyncStatus
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FormViewModelTest {
@@ -72,6 +75,46 @@ class FormViewModelTest {
         assertEquals("Juan", viewModel.record.first().firstName)
         assertEquals(Gender.MALE, viewModel.record.first().gender)
         verify(repository).saveDraft(viewModel.record.first())
+    }
+
+    @Test
+    fun `a brand-new record is persisted immediately, before any field is edited`() = runTest(testDispatcher) {
+        val repository: SurveyRepository = mock()
+        val viewModel = FormViewModel(repository, recordId = null)
+        advanceUntilIdle()
+
+        // Straight to "완료" with no edits must still leave a row for sendToLaptop to find.
+        verify(repository).saveDraft(viewModel.record.first())
+    }
+
+    @Test
+    fun `loading an existing record does not overwrite it with a blank placeholder`() = runTest(testDispatcher) {
+        val existing = SurveyRecord(firstName = "Maria")
+        val repository: SurveyRepository = mock()
+        whenever(repository.getById(existing.recordId)).thenReturn(existing)
+
+        FormViewModel(repository, recordId = existing.recordId)
+        advanceUntilIdle()
+
+        verify(repository, never()).saveDraft(any())
+    }
+
+    @Test
+    fun `editing a SENT record moves it back to PENDING so it is re-sent`() = runTest(testDispatcher) {
+        val existing = SurveyRecord(firstName = "Ana", status = SyncStatus.SENT)
+        val repository: SurveyRepository = mock()
+        whenever(repository.getById(existing.recordId)).thenReturn(existing)
+        val viewModel = FormViewModel(repository, recordId = existing.recordId)
+        viewModel.load()
+        advanceUntilIdle()
+
+        viewModel.updateField { it.copy(firstName = "Ana Maria") }
+        advanceUntilIdle()
+
+        val updated = viewModel.record.first()
+        assertEquals("Ana Maria", updated.firstName)
+        assertEquals(SyncStatus.PENDING, updated.status)
+        verify(repository).saveDraft(updated)
     }
 
     @Test

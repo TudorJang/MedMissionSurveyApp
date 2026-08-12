@@ -68,6 +68,21 @@ class SurveyDaoTest {
     }
 
     @Test
+    fun `observeAll returns records newest first regardless of insertion order`() = runBlocking {
+        val oldest = SurveyRecord(firstName = "Oldest", createdAt = 1_000L)
+        val newest = SurveyRecord(firstName = "Newest", createdAt = 3_000L)
+        val middle = SurveyRecord(firstName = "Middle", createdAt = 2_000L)
+        // Inserted deliberately out of order.
+        dao.upsert(middle)
+        dao.upsert(oldest)
+        dao.upsert(newest)
+
+        val all = dao.observeAll().first()
+
+        assertEquals(listOf("Newest", "Middle", "Oldest"), all.map { it.firstName })
+    }
+
+    @Test
     fun `getById returns null for unknown id`() = runBlocking {
         assertNull(dao.getById("does-not-exist"))
     }
