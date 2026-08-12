@@ -1,12 +1,15 @@
 package com.medmission.survey.ui.nav
 
+import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -28,7 +31,9 @@ fun SurveyNavGraph(navController: NavHostController = rememberNavController()) {
 
     NavHost(navController = navController, startDestination = "home") {
         composable("home") {
-            val viewModel = remember { HomeViewModel(app.surveyRepository) }
+            val viewModel: HomeViewModel = viewModel(
+                factory = viewModelFactory { initializer { HomeViewModel(app.surveyRepository) } },
+            )
             val records by viewModel.records.collectAsState()
             HomeScreen(
                 records = records,
@@ -41,7 +46,11 @@ fun SurveyNavGraph(navController: NavHostController = rememberNavController()) {
             arguments = listOf(navArgument("recordId") { type = NavType.StringType; nullable = true; defaultValue = null }),
         ) { backStackEntry ->
             val recordId = backStackEntry.arguments?.getString("recordId")
-            val viewModel = remember(recordId) { FormViewModel(app.surveyRepository, recordId) }
+            // Scoped to the back-stack entry's ViewModelStore, so a rotation does not
+            // rebuild FormViewModel and mint a fresh UUID for an in-progress draft.
+            val viewModel: FormViewModel = viewModel(
+                factory = viewModelFactory { initializer { FormViewModel(app.surveyRepository, recordId) } },
+            )
             LaunchedEffect(recordId) {
                 if (recordId != null) viewModel.load()
             }
@@ -60,18 +69,33 @@ fun SurveyNavGraph(navController: NavHostController = rememberNavController()) {
             arguments = listOf(navArgument("recordId") { type = NavType.StringType }),
         ) { backStackEntry ->
             val recordId = backStackEntry.arguments?.getString("recordId")!!
-            val viewModel = remember(recordId) {
-                LaptopSelectViewModel(app.laptopEndpointRepository, app.nsdDiscoveryService, app.surveyRepository, recordId)
-            }
+            val viewModel: LaptopSelectViewModel = viewModel(
+                factory = viewModelFactory {
+                    initializer {
+                        LaptopSelectViewModel(
+                            app.laptopEndpointRepository,
+                            app.nsdDiscoveryService,
+                            app.surveyRepository,
+                            recordId,
+                        )
+                    }
+                },
+            )
             val saved by viewModel.savedEndpoints.collectAsState()
             val discovered by viewModel.discovered.collectAsState()
             val scope = rememberCoroutineScope()
+            val context = LocalContext.current
             LaptopSelectScreen(
                 savedEndpoints = saved,
                 discoveredLaptops = discovered,
                 onSelect = { laptopId ->
                     scope.launch {
-                        viewModel.send(laptopId)
+                        val result = viewModel.send(laptopId)
+                        // On failure the record stays PENDING and SurveyRetryWorker will
+                        // pick it up, so we still return Home — but the user gets told.
+                        val message =
+                            if (result.isSuccess) "전송 완료" else "전송 실패, 자동 재시도됩니다"
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                         navController.popBackStack("home", inclusive = false)
                     }
                 },
