@@ -175,9 +175,19 @@ class SurveyPayloadMapperTest {
 
     @Test
     fun `serializes a fully-empty record to JSON without throwing`() {
-        val dto = SurveyPayloadMapper.toDto(SurveyRecord())
+        val record = SurveyRecord()
+        val dto = SurveyPayloadMapper.toDto(record)
         val json = Json.encodeToString(SurveyPayloadDto.serializer(), dto)
 
-        assertEquals(true, json.contains("\"recordId\""))
+        // Contract note for the bridge: kotlinx.serialization does not encode defaults,
+        // so unanswered fields are ABSENT rather than present-and-null. The nested
+        // group objects and the symptoms array are always present. Documented in
+        // docs/reference/wire-contract.md.
+        assertEquals(
+            """{"recordId":"${record.recordId}","patient":{},"medicalHistory":{},""" +
+                """"vitalSigns":{},"symptoms":[],"tbInfo":{},"smoking":{},"alcohol":{},""" +
+                """"environmentalExposure":{}}""",
+            json,
+        )
     }
 }
