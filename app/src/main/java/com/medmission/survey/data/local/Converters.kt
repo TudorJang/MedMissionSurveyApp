@@ -35,13 +35,17 @@ class Converters {
 
     @TypeConverter
     fun fromMedicalHistorySet(v: Set<MedicalHistoryItem>): String = v.joinToString(",") { it.name }
+    // Drop values that no longer map to a known enum constant (e.g. after a future
+    // rename) rather than throwing and making the whole record unreadable.
     @TypeConverter
     fun toMedicalHistorySet(v: String): Set<MedicalHistoryItem> =
-        if (v.isBlank()) emptySet() else v.split(",").map { MedicalHistoryItem.valueOf(it) }.toSet()
+        if (v.isBlank()) emptySet()
+        else v.split(",").mapNotNull { runCatching { MedicalHistoryItem.valueOf(it) }.getOrNull() }.toSet()
 
     @TypeConverter
     fun fromSymptomSet(v: Set<Symptom>): String = v.joinToString(",") { it.name }
     @TypeConverter
     fun toSymptomSet(v: String): Set<Symptom> =
-        if (v.isBlank()) emptySet() else v.split(",").map { Symptom.valueOf(it) }.toSet()
+        if (v.isBlank()) emptySet()
+        else v.split(",").mapNotNull { runCatching { Symptom.valueOf(it) }.getOrNull() }.toSet()
 }

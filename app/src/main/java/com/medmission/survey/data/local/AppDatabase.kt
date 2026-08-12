@@ -9,7 +9,7 @@ import com.medmission.survey.data.model.SurveyRecord
 @Database(
     entities = [SurveyRecord::class, LaptopEndpoint::class],
     version = 1,
-    exportSchema = false,
+    exportSchema = true,
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {

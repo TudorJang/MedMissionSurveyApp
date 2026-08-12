@@ -18,7 +18,7 @@
     <application
         android:name=".SurveyApplication"
         android:usesCleartextTraffic="true"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:label="Medical Mission Survey"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
 

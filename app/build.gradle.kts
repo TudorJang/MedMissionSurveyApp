@@ -16,7 +16,10 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "SURVEY_API_KEY", "\"changeme-dev-key\"")
+        // Override for a real deployment with -PsurveyApiKey=... or a surveyApiKey
+        // entry in gradle.properties / local.properties. The fallback is a dev-only value.
+        val surveyApiKey = project.findProperty("surveyApiKey") ?: "changeme-dev-key"
+        buildConfigField("String", "SURVEY_API_KEY", "\"$surveyApiKey\"")
     }
 
     buildFeatures {
@@ -39,6 +42,11 @@ android {
     testOptions {
         unitTests.isIncludeAndroidResources = true
     }
+}
+
+// Export the Room schema so a future migration has a v1 baseline to diff against.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {
