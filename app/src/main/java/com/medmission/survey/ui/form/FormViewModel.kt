@@ -6,11 +6,18 @@ import com.medmission.survey.data.model.MedicalHistoryItem
 import com.medmission.survey.data.model.Symptom
 import com.medmission.survey.data.model.SurveyRecord
 import com.medmission.survey.data.repository.SurveyRepository
+import com.medmission.survey.data.model.SyncStatus
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 
+@OptIn(FlowPreview::class)
 class FormViewModel(
     private val repository: SurveyRepository,
     private val recordId: String?,
@@ -18,6 +25,14 @@ class FormViewModel(
 
     private val _record = MutableStateFlow(SurveyRecord(recordId = recordId ?: java.util.UUID.randomUUID().toString()))
     val record: StateFlow<SurveyRecord> = _record.asStateFlow()
+
+    // Autosave requests. replay = 1 so an edit made before the collector below starts
+    // is not lost; DROP_OLDEST because only the newest snapshot of the record matters.
+    private val autosaveRequests = MutableSharedFlow<SurveyRecord>(
+        replay = 1,
+        extraBufferCapacity = 8,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
 
     init {
         // A brand-new survey must exist in the DB before the user ever edits a field:
@@ -31,6 +46,15 @@ class FormViewModel(
             val initial = _record.value
             viewModelScope.launch { repository.saveDraft(initial) }
         }
+
+        // Single serialized writer for autosave. Without this, updateField launched a
+        // coroutine per keystroke and Room's @Upsert can run those on its multi-threaded
+        // query executor, so rapid edits could land out of order.
+        viewModelScope.launch {
+            autosaveRequests
+                .debounce(AUTOSAVE_DEBOUNCE_MS)
+                .collectLatest { repository.saveDraft(it) }
+        }
     }
 
     fun load() {
@@ -41,9 +65,16 @@ class FormViewModel(
     }
 
     fun updateField(transform: (SurveyRecord) -> SurveyRecord) {
-        val updated = transform(_record.value)
+        val transformed = transform(_record.value)
+        // Editing an already-SENT record makes the tablet's copy diverge from what the
+        // bridge holds. Move it back to PENDING so the retry worker re-sends it; the
+        // bridge upserts by recordId, so re-sending is safe.
+        val updated =
+            if (transformed.status == SyncStatus.SENT) transformed.copy(status = SyncStatus.PENDING)
+            else transformed
+        // The UI reads _record directly, so it stays instant; only the DB write debounces.
         _record.value = updated
-        viewModelScope.launch { repository.saveDraft(updated) }
+        autosaveRequests.tryEmit(updated)
     }
 
     fun toggleMedicalHistory(item: MedicalHistoryItem) {
@@ -58,5 +89,9 @@ class FormViewModel(
             val set = record.symptoms
             record.copy(symptoms = if (symptom in set) set - symptom else set + symptom)
         }
+    }
+
+    companion object {
+        private const val AUTOSAVE_DEBOUNCE_MS = 300L
     }
 }
