@@ -16,6 +16,7 @@ import com.medmission.survey.data.repository.SurveyRepository
 import com.medmission.survey.work.SurveyRetryWorker
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
 
 class SurveyApplication : Application(), Configuration.Provider {
 
@@ -24,7 +25,11 @@ class SurveyApplication : Application(), Configuration.Provider {
     }
 
     private val apiClient by lazy {
-        OkHttpSurveyApiClient(OkHttpClient(), Json { ignoreUnknownKeys = true })
+        val httpClient = OkHttpClient.Builder()
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS)
+            .build()
+        OkHttpSurveyApiClient(httpClient, Json { ignoreUnknownKeys = true })
     }
 
     val surveyRepository by lazy {
