@@ -26,20 +26,20 @@ fun LaptopSelectScreen(
     Scaffold { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
             LazyColumn(Modifier.fillMaxSize()) {
-                item { Text("전송할 랩톱을 선택하세요") }
+                item { Text("Select a laptop to send to") }
                 items(savedEndpoints, key = { it.id }) { endpoint ->
                     Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                         Column(Modifier.padding(12.dp)) {
                             Text(endpoint.name)
                             Text("${endpoint.host}:${endpoint.port}")
-                            Button(onClick = { onSelect(endpoint.id) }) { Text("전송") }
+                            Button(onClick = { onSelect(endpoint.id) }) { Text("Send") }
                         }
                     }
                 }
 
-                item { Text("발견된 랩톱") }
+                item { Text("Discovered Laptops") }
                 if (discoveredLaptops.isEmpty()) {
-                    item { Text("검색 중...") }
+                    item { Text("Searching...") }
                 }
                 items(discoveredLaptops, key = { "${it.host}:${it.port}" }) { laptop ->
                     Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
@@ -47,7 +47,7 @@ fun LaptopSelectScreen(
                             Text(laptop.name)
                             Text("${laptop.host}:${laptop.port}")
                             Button(onClick = { onAddManual(laptop.name, laptop.host, laptop.port) }) {
-                                Text("추가")
+                                Text("Add")
                             }
                         }
                     }

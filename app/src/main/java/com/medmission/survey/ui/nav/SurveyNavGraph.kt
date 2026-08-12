@@ -94,7 +94,7 @@ fun SurveyNavGraph(navController: NavHostController = rememberNavController()) {
                         // On failure the record stays PENDING and SurveyRetryWorker will
                         // pick it up, so we still return Home — but the user gets told.
                         val message =
-                            if (result.isSuccess) "전송 완료" else "전송 실패, 자동 재시도됩니다"
+                            if (result.isSuccess) "Sent" else "Send failed — will retry automatically"
                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                         navController.popBackStack("home", inclusive = false)
                     }

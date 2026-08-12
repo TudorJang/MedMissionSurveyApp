@@ -29,10 +29,10 @@ import com.medmission.survey.data.model.SurveyRecord
 private data class InfoSection(val title: String, val note: String)
 
 private val PHYSICIAN_ONLY_SECTIONS = listOf(
-    InfoSection("진단 (Diagnosis)", "X-ray 촬영 후 의사가 작성"),
-    InfoSection("치료 및 투약 (Treatment and Medication)", "X-ray 촬영 후 의사가 작성"),
-    InfoSection("X-RAY AI 판독 (X-RAY AI Assessment)", "AI가 자동 작성"),
-    InfoSection("결과/안내 (Result/Guidance)", "X-ray 촬영 후 의사가 작성"),
+    InfoSection("Diagnosis", "Completed by physician after X-ray"),
+    InfoSection("Treatment and Medication", "Completed by physician after X-ray"),
+    InfoSection("X-RAY AI Assessment", "Completed automatically by AI"),
+    InfoSection("Result / Guidance", "Completed by physician after X-ray"),
 )
 
 @Composable
@@ -46,7 +46,7 @@ fun FormScreen(
 ) {
     Scaffold { padding ->
         LazyColumn(Modifier.fillMaxWidth().padding(padding).padding(16.dp)) {
-            item { Text("환자 정보") }
+            item { Text("Patient Information") }
             item {
                 OutlinedTextField(
                     value = record.firstName.orEmpty(),
@@ -64,7 +64,7 @@ fun FormScreen(
                 )
             }
 
-            item { Text("병력") }
+            item { Text("Medical History") }
             items(MedicalHistoryItem.values().toList()) { item ->
                 Row {
                     Checkbox(
@@ -75,7 +75,7 @@ fun FormScreen(
                 }
             }
 
-            item { Text("현재 증상") }
+            item { Text("Current Symptoms") }
             items(Symptom.values().toList()) { symptom ->
                 Row {
                     Checkbox(
@@ -92,7 +92,7 @@ fun FormScreen(
             item {
                 HorizontalDivider(Modifier.padding(top = 24.dp, bottom = 12.dp))
                 Text(
-                    "아래 항목은 태블릿에서 입력하지 않습니다",
+                    "The sections below are not entered on this tablet",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -113,7 +113,7 @@ fun FormScreen(
             }
 
             item {
-                androidx.compose.material3.Button(onClick = onDone) { Text("완료") }
+                androidx.compose.material3.Button(onClick = onDone) { Text("Done") }
             }
         }
     }

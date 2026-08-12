@@ -35,7 +35,7 @@ fun HomeScreen(
     Scaffold { padding ->
         Column(Modifier.fillMaxSize().padding(padding), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = onNewSurvey, modifier = Modifier.padding(16.dp)) {
-                Text("+ 새 설문")
+                Text("+ New Survey")
             }
             LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                 items(records, key = { it.recordId }) { record ->
@@ -46,7 +46,7 @@ fun HomeScreen(
                         Column(Modifier.padding(12.dp)) {
                             Text(record.no ?: record.recordId.take(8))
                             Text("${record.firstName.orEmpty()} ${record.lastName.orEmpty()}")
-                            // TODO: FAILED records have no manual "다시 보내기" flow yet —
+                            // TODO: FAILED records have no manual "resend" flow yet —
                             // that needs a laptop re-selection step; tracked as follow-up.
                             Text(
                                 text = record.status.name,

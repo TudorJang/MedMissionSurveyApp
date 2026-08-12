@@ -36,7 +36,7 @@ class FormViewModel(
 
     init {
         // A brand-new survey must exist in the DB before the user ever edits a field:
-        // otherwise a straight-to-"완료" record is never persisted and sendToLaptop
+        // otherwise a straight-to-"Done" record is never persisted and sendToLaptop
         // can't find it. Only for genuinely new records — an existing recordId is
         // loaded by load() and must not be overwritten with this placeholder.
         if (recordId == null) {
