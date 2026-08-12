@@ -17,13 +17,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.medmission.survey.data.model.SurveyRecord
 import com.medmission.survey.data.model.SyncStatus
+import com.medmission.survey.ui.theme.DraftGrey
+import com.medmission.survey.ui.theme.FailedRed
+import com.medmission.survey.ui.theme.PendingAmber
+import com.medmission.survey.ui.theme.SentGreen
 
-/** Minimal at-a-glance sync signal — deliberately not a full theme/design system. */
+/** At-a-glance sync signal. Colors come from the theme so the hex values live in one place. */
 private fun statusColor(status: SyncStatus): Color = when (status) {
-    SyncStatus.DRAFT -> Color(0xFF757575)   // grey
-    SyncStatus.PENDING -> Color(0xFFF9A825) // amber
-    SyncStatus.SENT -> Color(0xFF2E7D32)    // green
-    SyncStatus.FAILED -> Color(0xFFC62828)  // red
+    SyncStatus.DRAFT -> DraftGrey
+    SyncStatus.PENDING -> PendingAmber
+    SyncStatus.SENT -> SentGreen
+    SyncStatus.FAILED -> FailedRed
 }
 
 @Composable
