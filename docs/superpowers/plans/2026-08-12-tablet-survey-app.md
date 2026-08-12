@@ -481,7 +481,7 @@ git commit -m "feat: add survey domain enums and SurveyRecord entity"
 
 **Interfaces:**
 - Consumes: `SurveyRecord`, `SyncStatus`, and all enums from Task 2
-- Produces: `SurveyDao` with `upsert(record: SurveyRecord)`, `getById(recordId: String): SurveyRecord?`, `observeAll(): Flow<List<SurveyRecord>>`, `getByStatus(status: SyncStatus): List<SurveyRecord>`; `AppDatabase` (Room `RoomDatabase`) exposing `surveyDao(): SurveyDao` and `laptopEndpointDao(): LaptopEndpointDao` (the latter wired in Task 6)
+- Produces: `SurveyDao` with `upsert(record: SurveyRecord)`, `getById(recordId: String): SurveyRecord?`, `observeAll(): Flow<List<SurveyRecord>>`, `getByStatus(status: SyncStatus): List<SurveyRecord>`; `AppDatabase` (Room `RoomDatabase`) exposing `surveyDao(): SurveyDao` and `laptopEndpointDao(): LaptopEndpointDao` (the latter wired in Task 4)
 
 - [ ] **Step 1: Write the failing test**
 
@@ -647,7 +647,7 @@ interface SurveyDao {
 }
 ```
 
-- [ ] **Step 5: Implement `AppDatabase.kt`** (references `LaptopEndpointDao`, built in Task 6 — declare it now so the interface is stable; Task 6 fills in its body)
+- [ ] **Step 5: Implement `AppDatabase.kt`** (references `LaptopEndpointDao`, whose full DAO implementation this task also creates below in Steps 5b/5c so the module compiles; Task 4 adds a repository layer on top without modifying these files)
 
 ```kotlin
 package com.medmission.survey.data.local
@@ -670,9 +670,9 @@ abstract class AppDatabase : RoomDatabase() {
 }
 ```
 
-This references `LaptopEndpoint` (model) and `LaptopEndpointDao`, which do not exist yet — create minimal stand-ins now so the module compiles; Task 6 replaces them with the real implementation.
+This references `LaptopEndpoint` (model) and `LaptopEndpointDao`, which do not exist yet — create their full implementation now (Steps 5b/5c below) so the module compiles. These are final, not placeholders; Task 4 only adds `LaptopEndpointRepository` on top and does not modify either file.
 
-- [ ] **Step 5b: Create a minimal `LaptopEndpoint.kt` stand-in**
+- [ ] **Step 5b: Create `LaptopEndpoint.kt`**
 
 ```kotlin
 package com.medmission.survey.data.model
@@ -691,7 +691,7 @@ data class LaptopEndpoint(
 )
 ```
 
-- [ ] **Step 5c: Create a minimal `LaptopEndpointDao.kt` stand-in**
+- [ ] **Step 5c: Create `LaptopEndpointDao.kt`**
 
 ```kotlin
 package com.medmission.survey.data.local
@@ -794,10 +794,12 @@ class LaptopEndpointDaoTest {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run the test**
+
+`LaptopEndpointDao` was already fully implemented in Task 3 (Steps 5b/5c), so these are regression tests confirming that existing behavior rather than a red-green cycle — expect them to pass immediately, not fail.
 
 Run: `./gradlew testDebugUnitTest --tests "com.medmission.survey.data.local.LaptopEndpointDaoTest"`
-Expected: FAIL — the sorting assertion fails against the stand-in DAO from Task 3 if `ORDER BY name ASC` was already correct, this should already pass. Confirm the two new tests both compile and pass; if `getById` stand-in already satisfies the contract, this step's real purpose is verifying the repository layer next, so proceed if both tests pass here.
+Expected: PASS (both tests)
 
 - [ ] **Step 3: Implement `LaptopEndpointRepository.kt`**
 
@@ -845,7 +847,7 @@ git commit -m "feat: add LaptopEndpointRepository"
 
 **Interfaces:**
 - Consumes: `SurveyRecord` and all enums from Task 2
-- Produces: `SurveyPayloadDto` (and nested `PatientDto`, `MedicalHistoryDto`, `VitalSignsDto`, `TbInfoDto`, `SmokingDto`, `AlcoholDto`, `EnvironmentalExposureDto`, all `@Serializable`), and `SurveyPayloadMapper.toDto(record: SurveyRecord): SurveyPayloadDto` — Task 7 (`SurveyApiClient`) serializes this DTO to JSON exactly as defined here.
+- Produces: `SurveyPayloadDto` (and nested `PatientDto`, `MedicalHistoryDto`, `VitalSignsDto`, `TbInfoDto`, `SmokingDto`, `AlcoholDto`, `EnvironmentalExposureDto`, all `@Serializable`), and `SurveyPayloadMapper.toDto(record: SurveyRecord): SurveyPayloadDto` — Task 6 (`SurveyApiClient`) serializes this DTO to JSON exactly as defined here.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1084,7 +1086,7 @@ git commit -m "feat: add JSON DTOs and SurveyRecord-to-payload mapper"
 
 **Interfaces:**
 - Consumes: `SurveyPayloadDto` from Task 5
-- Produces: `SurveyApiClient` interface with `suspend fun sendSurvey(baseUrl: String, apiKey: String, payload: SurveyPayloadDto): Result<Unit>`, and `OkHttpSurveyApiClient` implementation — Task 8 (`SurveyRepository`) calls this directly.
+- Produces: `SurveyApiClient` interface with `suspend fun sendSurvey(baseUrl: String, apiKey: String, payload: SurveyPayloadDto): Result<Unit>`, and `OkHttpSurveyApiClient` implementation — Task 7 (`SurveyRepository`) calls this directly.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1216,7 +1218,7 @@ git commit -m "feat: add OkHttp-based SurveyApiClient with API key auth"
 
 **Interfaces:**
 - Consumes: `SurveyDao` (Task 3), `LaptopEndpointDao` (Task 3/4), `SurveyApiClient` (Task 6), `SurveyPayloadMapper` (Task 5)
-- Produces: `SurveyRepository` with `suspend fun saveDraft(record: SurveyRecord)`, `fun observeAll(): Flow<List<SurveyRecord>>`, `suspend fun getById(recordId: String): SurveyRecord?`, `suspend fun sendToLaptop(recordId: String, laptopId: String): Result<Unit>`, `suspend fun getPendingRecords(): List<SurveyRecord>`, and constant `SurveyRepository.MAX_SEND_ATTEMPTS = 10` — Task 9 (`SurveyRetryWorker`) calls `getPendingRecords()` and `sendToLaptop()`.
+- Produces: `SurveyRepository` with `suspend fun saveDraft(record: SurveyRecord)`, `fun observeAll(): Flow<List<SurveyRecord>>`, `suspend fun getById(recordId: String): SurveyRecord?`, `suspend fun sendToLaptop(recordId: String, laptopId: String): Result<Unit>`, `suspend fun getPendingRecords(): List<SurveyRecord>`, and constant `SurveyRepository.MAX_SEND_ATTEMPTS = 10` — Task 8 (`SurveyRetryWorker`) calls `getPendingRecords()` and `sendToLaptop()`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1435,7 +1437,7 @@ git commit -m "feat: add SurveyRepository with send/retry status transitions"
 
 **Interfaces:**
 - Consumes: `SurveyRepository.getPendingRecords()` and `SurveyRepository.sendToLaptop(recordId, laptopId)` from Task 7
-- Produces: `SurveyRetryWorker` (a `CoroutineWorker`) that retries every `PENDING` record against its stored `targetLaptopId`, and `SurveyRetryWorker.enqueuePeriodic(context: Context)` — called from `SurveyApplication` in Task 9. Records with no `targetLaptopId` (never attempted) are skipped, since retry only applies to records that already tried and failed.
+- Produces: `SurveyRetryWorker` (a `CoroutineWorker`) that retries every `PENDING` record against its stored `targetLaptopId`, and `SurveyRetryWorker.enqueuePeriodic(context: Context)` — called from `SurveyApplication` in Task 10. Records with no `targetLaptopId` (never attempted) are skipped, since retry only applies to records that already tried and failed.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1595,7 +1597,7 @@ git commit -m "feat: add SurveyRetryWorker for automatic offline-queue retry"
 - Create: `app/src/main/java/com/medmission/survey/data/network/NsdDiscoveryService.kt`
 
 **Interfaces:**
-- Produces: `data class DiscoveredLaptop(val name: String, val host: String, val port: Int)` and `NsdDiscoveryService` with `fun discover(): Flow<List<DiscoveredLaptop>>` — consumed by `LaptopSelectViewModel` in Task 13. This wraps `android.net.nsd.NsdManager`, which requires an instrumented device/emulator to exercise; it is not unit-testable on the JVM, so this task has no local test — Task 13's ViewModel test uses a fake implementation of this interface instead.
+- Produces: `data class DiscoveredLaptop(val name: String, val host: String, val port: Int)` and `NsdDiscoveryService` with `fun discover(): Flow<List<DiscoveredLaptop>>` — consumed by `LaptopSelectViewModel` in Task 12. This wraps `android.net.nsd.NsdManager`, which requires an instrumented device/emulator to exercise; it is not unit-testable on the JVM, so this task has no local test — Task 12's ViewModel test uses a fake implementation of this interface instead.
 
 - [ ] **Step 1: Implement `NsdDiscoveryService.kt`**
 
