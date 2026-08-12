@@ -19,6 +19,20 @@ class FormViewModel(
     private val _record = MutableStateFlow(SurveyRecord(recordId = recordId ?: java.util.UUID.randomUUID().toString()))
     val record: StateFlow<SurveyRecord> = _record.asStateFlow()
 
+    init {
+        // A brand-new survey must exist in the DB before the user ever edits a field:
+        // otherwise a straight-to-"완료" record is never persisted and sendToLaptop
+        // can't find it. Only for genuinely new records — an existing recordId is
+        // loaded by load() and must not be overwritten with this placeholder.
+        if (recordId == null) {
+            // Capture the value now, not inside the coroutine: by the time the
+            // coroutine actually runs the user may already have edited a field,
+            // and we'd redundantly re-save the newer value.
+            val initial = _record.value
+            viewModelScope.launch { repository.saveDraft(initial) }
+        }
+    }
+
     fun load() {
         val id = recordId ?: return
         viewModelScope.launch {
