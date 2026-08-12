@@ -57,8 +57,17 @@ class FormViewModel(
         }
     }
 
+    private var hasLoaded = false
+
+    /**
+     * Loads the stored record once. Idempotent on purpose: the ViewModel now outlives
+     * configuration changes, so the caller's LaunchedEffect re-fires on rotation and a
+     * second load would overwrite edits the user made since the last autosave.
+     */
     fun load() {
         val id = recordId ?: return
+        if (hasLoaded) return
+        hasLoaded = true
         viewModelScope.launch {
             repository.getById(id)?.let { _record.value = it }
         }

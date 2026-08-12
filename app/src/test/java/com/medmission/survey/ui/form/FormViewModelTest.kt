@@ -100,6 +100,24 @@ class FormViewModelTest {
     }
 
     @Test
+    fun `a second load does not clobber edits made since the first one`() = runTest(testDispatcher) {
+        // The ViewModel survives configuration changes, so the caller's LaunchedEffect
+        // re-fires load() on rotation. That must not revert unsaved edits.
+        val existing = SurveyRecord(firstName = "Maria")
+        val repository: SurveyRepository = mock()
+        whenever(repository.getById(existing.recordId)).thenReturn(existing)
+        val viewModel = FormViewModel(repository, recordId = existing.recordId)
+        viewModel.load()
+        advanceUntilIdle()
+
+        viewModel.updateField { it.copy(firstName = "Maria Clara") }
+        viewModel.load()
+        advanceUntilIdle()
+
+        assertEquals("Maria Clara", viewModel.record.first().firstName)
+    }
+
+    @Test
     fun `editing a SENT record moves it back to PENDING so it is re-sent`() = runTest(testDispatcher) {
         val existing = SurveyRecord(firstName = "Ana", status = SyncStatus.SENT)
         val repository: SurveyRepository = mock()
