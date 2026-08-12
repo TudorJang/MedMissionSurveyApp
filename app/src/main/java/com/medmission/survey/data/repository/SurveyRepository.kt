@@ -26,10 +26,20 @@ class SurveyRepository(
     suspend fun getPendingRecords(): List<SurveyRecord> = surveyDao.getByStatus(SyncStatus.PENDING)
 
     suspend fun sendToLaptop(recordId: String, laptopId: String): Result<Unit> {
+        // Not retryable and nothing in the DB to update — there is no row to count
+        // attempts against. Since FormViewModel now persists every record at creation,
+        // this should be unreachable in practice.
         val record = surveyDao.getById(recordId)
             ?: return Result.failure(IllegalStateException("Record not found: $recordId"))
+
+        // A deleted endpoint or a stale targetLaptopId must still burn an attempt,
+        // otherwise the record retries forever and never reaches FAILED.
         val endpoint = laptopEndpointDao.getById(laptopId)
-            ?: return Result.failure(IllegalStateException("Laptop endpoint not found: $laptopId"))
+            ?: return recordFailedAttempt(
+                record,
+                laptopId,
+                IllegalStateException("Laptop endpoint not found: $laptopId"),
+            )
 
         val payload = SurveyPayloadMapper.toDto(record)
         val baseUrl = "http://${endpoint.host}:${endpoint.port}"
@@ -45,17 +55,25 @@ class SurveyRepository(
             )
             Result.success(Unit)
         } else {
-            val attempts = record.sendAttempts + 1
-            val newStatus = if (attempts >= MAX_SEND_ATTEMPTS) SyncStatus.FAILED else SyncStatus.PENDING
-            surveyDao.upsert(
-                record.copy(
-                    status = newStatus,
-                    sendAttempts = attempts,
-                    targetLaptopId = laptopId,
-                )
-            )
-            Result.failure(result.exceptionOrNull() ?: IOException("Unknown send error"))
+            recordFailedAttempt(record, laptopId, result.exceptionOrNull() ?: IOException("Unknown send error"))
         }
+    }
+
+    private suspend fun recordFailedAttempt(
+        record: SurveyRecord,
+        laptopId: String,
+        cause: Throwable,
+    ): Result<Unit> {
+        val attempts = record.sendAttempts + 1
+        val newStatus = if (attempts >= MAX_SEND_ATTEMPTS) SyncStatus.FAILED else SyncStatus.PENDING
+        surveyDao.upsert(
+            record.copy(
+                status = newStatus,
+                sendAttempts = attempts,
+                targetLaptopId = laptopId,
+            )
+        )
+        return Result.failure(cause)
     }
 
     companion object {
