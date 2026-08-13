@@ -25,9 +25,11 @@ val SurfaceTint = Color(0xFFE4E1D8)
 
 /**
  * Muted accent for the physician/AI-only sections, so they read as visually distinct
- * from the sections the tablet operator actually fills in.
+ * from the sections the tablet operator actually fills in. Darkened from the original
+ * 0xFF8A8D86 (~3.09:1 on PaperBackground) to clear WCAG AA's 4.5:1 for normal text —
+ * this color is used for body text throughout the read-only sections, not just accents.
  */
-val MutedSlate = Color(0xFF8A8D86)
+val MutedSlate = Color(0xFF5F6359)
 
 /** Sync-status colors. Shared by HomeScreen so the hex values live in exactly one place. */
 val DraftGrey = Color(0xFF757575)

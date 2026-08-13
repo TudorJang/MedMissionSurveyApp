@@ -19,6 +19,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.doSuspendableAnswer
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
@@ -136,6 +137,46 @@ class FormViewModelTest {
     }
 
     @Test
+    fun `re-applying the same value to a SENT record does not demote it to PENDING`() = runTest(testDispatcher) {
+        val existing = SurveyRecord(firstName = "Ana", status = SyncStatus.SENT)
+        val repository: SurveyRepository = mock()
+        whenever(repository.getById(existing.recordId)).thenReturn(existing)
+        val viewModel = FormViewModel(repository, recordId = existing.recordId)
+        viewModel.load()
+        advanceUntilIdle()
+
+        // Re-tapping an already-selected chip or retyping the same text calls
+        // updateField with a transform that produces an identical record.
+        viewModel.updateField { it.copy(firstName = "Ana") }
+        advanceUntilIdle()
+
+        val updated = viewModel.record.first()
+        assertEquals(SyncStatus.SENT, updated.status)
+        verify(repository, never()).saveDraft(any())
+    }
+
+    @Test
+    fun `an edit made while load is still in flight is not clobbered by the stale snapshot`() = runTest(testDispatcher) {
+        val existing = SurveyRecord(firstName = "Maria")
+        val loadGate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val repository: SurveyRepository = mock {
+            onBlocking { getById(existing.recordId) } doSuspendableAnswer {
+                loadGate.await()
+                existing
+            }
+        }
+        val viewModel = FormViewModel(repository, recordId = existing.recordId)
+
+        viewModel.load()
+        // The DB read hasn't resolved yet; the user starts typing in the meantime.
+        viewModel.updateField { it.copy(firstName = "Maria Clara") }
+        loadGate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals("Maria Clara", viewModel.record.first().firstName)
+    }
+
+    @Test
     fun `toggling a medical history item adds and removes it from the set`() = runTest(testDispatcher) {
         val repository: SurveyRepository = mock()
         val viewModel = FormViewModel(repository, recordId = null)
@@ -147,5 +188,30 @@ class FormViewModelTest {
         viewModel.toggleMedicalHistory(MedicalHistoryItem.ASTHMA)
         advanceUntilIdle()
         assertTrue(viewModel.record.first().medicalHistory.isEmpty())
+    }
+
+    @Test
+    fun `selecting NONE clears any other selected symptoms`() = runTest(testDispatcher) {
+        val repository: SurveyRepository = mock()
+        val viewModel = FormViewModel(repository, recordId = null)
+
+        viewModel.toggleSymptom(com.medmission.survey.data.model.Symptom.COUGH)
+        viewModel.toggleSymptom(com.medmission.survey.data.model.Symptom.FEVER)
+        viewModel.toggleSymptom(com.medmission.survey.data.model.Symptom.NONE)
+        advanceUntilIdle()
+
+        assertEquals(setOf(com.medmission.survey.data.model.Symptom.NONE), viewModel.record.first().symptoms)
+    }
+
+    @Test
+    fun `selecting another symptom clears a previously selected NONE`() = runTest(testDispatcher) {
+        val repository: SurveyRepository = mock()
+        val viewModel = FormViewModel(repository, recordId = null)
+
+        viewModel.toggleSymptom(com.medmission.survey.data.model.Symptom.NONE)
+        viewModel.toggleSymptom(com.medmission.survey.data.model.Symptom.COUGH)
+        advanceUntilIdle()
+
+        assertEquals(setOf(com.medmission.survey.data.model.Symptom.COUGH), viewModel.record.first().symptoms)
     }
 }

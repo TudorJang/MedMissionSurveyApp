@@ -1,8 +1,7 @@
 package com.medmission.survey.ui.form
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -31,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,6 +86,19 @@ private val RESULT_GUIDANCE_OPTIONS = listOf(
     "4. Referred for hospital evaluation of a non-TB chest abnormality",
     "5. Referred for both TB-DOTS and hospital evaluation",
 )
+
+// Enum.values() allocates a fresh array on every call. With a plain scrolling Column the
+// whole form recomposes on every keystroke, so these are hoisted once rather than
+// re-derived at each of their call sites (some of which — YesNoUnknown — are hit from 5
+// separate places).
+private val GENDER_OPTIONS = Gender.values().toList()
+private val MARITAL_STATUS_OPTIONS = MaritalStatus.values().toList()
+private val MEDICAL_HISTORY_ITEMS = MedicalHistoryItem.values().toList()
+private val SYMPTOM_OPTIONS = Symptom.values().toList()
+private val SMOKING_STATUS_OPTIONS = SmokingStatus.values().toList()
+private val SMOKING_DURATION_OPTIONS = SmokingDuration.values().toList()
+private val ALCOHOL_AMOUNT_OPTIONS = AlcoholAmount.values().toList()
+private val YES_NO_UNKNOWN_OPTIONS = YesNoUnknown.values().toList()
 
 @Composable
 fun FormScreen(
@@ -155,7 +168,7 @@ fun FormScreen(
                 }
                 OptionChips(
                     label = "Gender",
-                    options = Gender.values().toList(),
+                    options = GENDER_OPTIONS,
                     selected = record.gender,
                     optionLabel = { it.label },
                     onSelect = { v -> onFieldChange { it.copy(gender = v) } },
@@ -203,7 +216,7 @@ fun FormScreen(
                 }
                 OptionChips(
                     label = "Marital Status",
-                    options = MaritalStatus.values().toList(),
+                    options = MARITAL_STATUS_OPTIONS,
                     selected = record.maritalStatus,
                     optionLabel = { it.label },
                     onSelect = { v -> onFieldChange { it.copy(maritalStatus = v) } },
@@ -212,7 +225,7 @@ fun FormScreen(
 
             // ---------------- Medical History ----------------
             SectionCard(title = "Medical History") {
-                MedicalHistoryItem.values().forEach { item ->
+                MEDICAL_HISTORY_ITEMS.forEach { item ->
                     CheckboxRow(
                         label = item.label,
                         checked = item in record.medicalHistory,
@@ -321,7 +334,7 @@ fun FormScreen(
 
             // ---------------- 1. Current Symptoms ----------------
             SectionCard(number = "1.", title = "Current Symptoms") {
-                Symptom.values().forEach { symptom ->
+                SYMPTOM_OPTIONS.forEach { symptom ->
                     CheckboxRow(
                         label = symptom.label,
                         checked = symptom in record.symptoms,
@@ -335,12 +348,22 @@ fun FormScreen(
                 YesNoUnknownChips(
                     label = "Have you ever been diagnosed with TB?",
                     selected = record.everDiagnosedTB,
-                    onSelect = { v -> onFieldChange { it.copy(everDiagnosedTB = v) } },
+                    onSelect = { v ->
+                        onFieldChange {
+                            it.copy(
+                                everDiagnosedTB = v,
+                                // Clearing this on any non-YES answer stops a stale year
+                                // from persisting once the gating answer contradicts it.
+                                diagnosisYear = if (v == YesNoUnknown.YES) it.diagnosisYear else null,
+                            )
+                        }
+                    },
                 )
                 TextFieldRow(
                     label = "If yes, year of diagnosis",
                     value = record.diagnosisYear,
                     onValueChange = { v -> onFieldChange { it.copy(diagnosisYear = v) } },
+                    enabled = record.everDiagnosedTB == YesNoUnknown.YES,
                 )
                 YesNoUnknownChips(
                     label = "Have you ever received TB treatment?",
@@ -355,12 +378,20 @@ fun FormScreen(
                 YesNoUnknownChips(
                     label = "Have you had close contact with a person with active TB?",
                     selected = record.closeContactActiveTB,
-                    onSelect = { v -> onFieldChange { it.copy(closeContactActiveTB = v) } },
+                    onSelect = { v ->
+                        onFieldChange {
+                            it.copy(
+                                closeContactActiveTB = v,
+                                closeContactWhen = if (v == YesNoUnknown.YES) it.closeContactWhen else null,
+                            )
+                        }
+                    },
                 )
                 TextFieldRow(
                     label = "If yes, when?",
                     value = record.closeContactWhen,
                     onValueChange = { v -> onFieldChange { it.copy(closeContactWhen = v) } },
+                    enabled = record.closeContactActiveTB == YesNoUnknown.YES,
                 )
                 YesNoUnknownChips(
                     label = "Is anyone in your household currently being treated for TB?",
@@ -373,14 +404,14 @@ fun FormScreen(
             SectionCard(number = "3.", title = "Smoking") {
                 OptionChips(
                     label = "Smoking Status",
-                    options = SmokingStatus.values().toList(),
+                    options = SMOKING_STATUS_OPTIONS,
                     selected = record.smokingStatus,
                     optionLabel = { it.label },
                     onSelect = { v -> onFieldChange { it.copy(smokingStatus = v) } },
                 )
                 OptionChips(
                     label = "Smoking Duration",
-                    options = SmokingDuration.values().toList(),
+                    options = SMOKING_DURATION_OPTIONS,
                     selected = record.smokingDuration,
                     optionLabel = { it.label },
                     onSelect = { v -> onFieldChange { it.copy(smokingDuration = v) } },
@@ -392,14 +423,22 @@ fun FormScreen(
                 YesNoChips(
                     label = "Do you drink alcohol?",
                     selected = record.drinksAlcohol,
-                    onSelect = { v -> onFieldChange { it.copy(drinksAlcohol = v) } },
+                    onSelect = { v ->
+                        onFieldChange {
+                            it.copy(
+                                drinksAlcohol = v,
+                                alcoholAmount = if (v) it.alcoholAmount else null,
+                            )
+                        }
+                    },
                 )
                 OptionChips(
                     label = "If yes, how much do you usually drink per occasion?",
-                    options = AlcoholAmount.values().toList(),
+                    options = ALCOHOL_AMOUNT_OPTIONS,
                     selected = record.alcoholAmount,
                     optionLabel = { it.label },
                     onSelect = { v -> onFieldChange { it.copy(alcoholAmount = v) } },
+                    enabled = record.drinksAlcohol == true,
                 )
             }
 
@@ -490,8 +529,12 @@ private fun SectionCard(
     number: String? = null,
     accent: Color = ClinicalTeal,
     note: String? = null,
+    collapsible: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    // Collapsed by default only when collapsible; editable sections (collapsible = false)
+    // are always expanded, unchanged from before this was added.
+    var expanded by rememberSaveable { mutableStateOf(!collapsible) }
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -508,7 +551,16 @@ private fun SectionCard(
                 .padding(start = 16.dp + ACCENT_BAR_WIDTH, top = 14.dp, end = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = if (collapsible) {
+                    Modifier.fillMaxWidth().clickable(
+                        onClickLabel = if (expanded) "Collapse" else "Expand",
+                    ) { expanded = !expanded }
+                } else {
+                    Modifier
+                },
+            ) {
                 if (number != null) {
                     // The PDF's own section numbering, kept literally so the screen and the
                     // paper form can be read side by side.
@@ -523,20 +575,39 @@ private fun SectionCard(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
                     color = accent,
+                    modifier = if (collapsible) Modifier.weight(1f) else Modifier,
                 )
+                if (collapsible) {
+                    Text(
+                        text = if (expanded) "▾" else "▸",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = accent,
+                    )
+                }
             }
-            if (note != null) {
-                Text(note, style = MaterialTheme.typography.bodySmall)
+            if (expanded) {
+                if (note != null) {
+                    Text(note, style = MaterialTheme.typography.bodySmall)
+                }
+                HorizontalDivider(color = ClayAmber.copy(alpha = 0.35f))
+                content()
             }
-            HorizontalDivider(color = ClayAmber.copy(alpha = 0.35f))
-            content()
         }
     }
 }
 
 private val ACCENT_BAR_WIDTH = 4.dp
 
-/** A [SectionCard] for the four physician/AI-only sections. Display only. */
+/**
+ * A [SectionCard] for the four physician/AI-only sections. Display only, and collapsed by
+ * default: their transcribed content adds real vertical length, and staff need to scroll
+ * past them to reach the fields they actually fill in.
+ *
+ * `content` has the same `@Composable ColumnScope.() -> Unit` shape as [SectionCard]'s, so
+ * the type system will not stop a future edit from pasting in an `OutlinedTextField` or
+ * `OptionChips` call here. Don't: anything placed inside a [ReadOnlySectionCard] must stay
+ * plain `Text` — no control wired to `onFieldChange` belongs in a physician/AI-only section.
+ */
 @Composable
 private fun ReadOnlySectionCard(
     title: String,
@@ -547,6 +618,7 @@ private fun ReadOnlySectionCard(
     number = number,
     accent = MutedSlate,
     note = OFF_TABLET_NOTE,
+    collapsible = true,
     content = content,
 )
 
@@ -574,6 +646,7 @@ private fun TextFieldRow(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     keyboardType: KeyboardType = KeyboardType.Text,
+    enabled: Boolean = true,
 ) {
     OutlinedTextField(
         value = value.orEmpty(),
@@ -582,6 +655,7 @@ private fun TextFieldRow(
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         modifier = modifier.fillMaxWidth(),
+        enabled = enabled,
     )
 }
 
@@ -605,7 +679,10 @@ private fun NumericFieldRow(
     onTextChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var text by remember { mutableStateOf(externalText) }
+    // rememberSaveable, not remember: an in-progress unparseable entry (e.g. "38.") must
+    // survive Activity recreation (rotation, config change, low-memory recreation), or the
+    // buffer resets to the last committed value and the next keystroke corrupts it.
+    var text by rememberSaveable { mutableStateOf(externalText) }
     // Re-sync only when the record's value changed for a reason other than this field's
     // own edits — e.g. FormViewModel.load() finished and swapped in the stored record.
     LaunchedEffect(externalText) {
@@ -649,10 +726,15 @@ private fun DoubleFieldRow(
     label = label,
     externalText = value?.toString().orEmpty(),
     keyboardType = KeyboardType.Decimal,
-    normalize = { it.toDoubleOrNull()?.toString().orEmpty() },
-    onTextChange = { onValueChange(it.toDoubleOrNull()) },
+    // Some locale keyboards emit ',' as the decimal separator; toDoubleOrNull only
+    // accepts '.', so without this a value like "36,5" parses to null and is silently
+    // dropped even though the field visibly shows a value.
+    normalize = { it.toCanonicalDouble()?.toString().orEmpty() },
+    onTextChange = { onValueChange(it.toCanonicalDouble()) },
     modifier = modifier,
 )
+
+private fun String.toCanonicalDouble(): Double? = replace(',', '.').toDoubleOrNull()
 
 // ---------------------------------------------------------------------------
 // Single-select input
@@ -666,6 +748,7 @@ private fun <T> OptionChips(
     selected: T?,
     optionLabel: (T) -> String,
     onSelect: (T) -> Unit,
+    enabled: Boolean = true,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         FieldLabel(label)
@@ -675,6 +758,7 @@ private fun <T> OptionChips(
                     selected = option == selected,
                     onClick = { onSelect(option) },
                     label = { Text(optionLabel(option)) },
+                    enabled = enabled,
                 )
             }
         }
@@ -688,7 +772,7 @@ private fun YesNoUnknownChips(
     onSelect: (YesNoUnknown) -> Unit,
 ) = OptionChips(
     label = label,
-    options = YesNoUnknown.values().toList(),
+    options = YES_NO_UNKNOWN_OPTIONS,
     selected = selected,
     optionLabel = { it.label },
     onSelect = onSelect,
@@ -776,11 +860,10 @@ private fun BlankFieldRow(label: String) {
             color = MutedSlate,
         )
         Spacer(Modifier.width(8.dp))
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(1.dp)
-                .background(MutedSlate.copy(alpha = 0.4f)),
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            thickness = 1.dp,
+            color = MutedSlate.copy(alpha = 0.4f),
         )
     }
 }

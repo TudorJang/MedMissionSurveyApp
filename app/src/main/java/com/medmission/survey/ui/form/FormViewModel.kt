@@ -59,6 +59,11 @@ class FormViewModel(
 
     private var hasLoaded = false
 
+    // Bumped on every genuine field edit. Lets load()'s async DB read detect whether the
+    // user started editing while it was in flight, so it doesn't clobber those edits with
+    // the pre-edit snapshot it fetched.
+    private var editVersion = 0
+
     /**
      * Loads the stored record once. Idempotent on purpose: the ViewModel now outlives
      * configuration changes, so the caller's LaunchedEffect re-fires on rotation and a
@@ -68,13 +73,22 @@ class FormViewModel(
         val id = recordId ?: return
         if (hasLoaded) return
         hasLoaded = true
+        val versionAtLoadStart = editVersion
         viewModelScope.launch {
-            repository.getById(id)?.let { _record.value = it }
+            repository.getById(id)?.let {
+                // If the user already edited a field while this load was in flight, the
+                // fetched row is a stale pre-edit snapshot; applying it would silently
+                // discard what they just typed.
+                if (editVersion == versionAtLoadStart) _record.value = it
+            }
         }
     }
 
     fun updateField(transform: (SurveyRecord) -> SurveyRecord) {
-        val transformed = transform(_record.value)
+        val current = _record.value
+        val transformed = transform(current)
+        if (transformed == current) return
+        editVersion++
         // Editing an already-SENT record makes the tablet's copy diverge from what the
         // bridge holds. Move it back to PENDING so the retry worker re-sends it; the
         // bridge upserts by recordId, so re-sending is safe.
@@ -96,7 +110,15 @@ class FormViewModel(
     fun toggleSymptom(symptom: Symptom) {
         updateField { record ->
             val set = record.symptoms
-            record.copy(symptoms = if (symptom in set) set - symptom else set + symptom)
+            val toggled = if (symptom in set) set - symptom else set + symptom
+            // NONE and any other symptom together is a contradiction the paper form can't
+            // express, so selecting one side clears the other rather than blocking the tap.
+            val resolved = when {
+                symptom == Symptom.NONE && symptom in toggled -> setOf(Symptom.NONE)
+                symptom != Symptom.NONE && symptom in toggled -> toggled - Symptom.NONE
+                else -> toggled
+            }
+            record.copy(symptoms = resolved)
         }
     }
 
