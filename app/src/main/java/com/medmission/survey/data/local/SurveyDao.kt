@@ -20,4 +20,7 @@ interface SurveyDao {
 
     @Query("SELECT * FROM survey_records WHERE status = :status")
     suspend fun getByStatus(status: SyncStatus): List<SurveyRecord>
+
+    @Query("SELECT COUNT(*) FROM survey_records")
+    suspend fun countAll(): Int
 }

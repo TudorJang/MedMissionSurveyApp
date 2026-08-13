@@ -44,6 +44,7 @@ class FormViewModelTest {
     @Test
     fun `starting with no recordId begins a fresh DRAFT record`() = runTest(testDispatcher) {
         val repository: SurveyRepository = mock()
+        whenever(repository.countAll()).thenReturn(0)
         val viewModel = FormViewModel(repository, recordId = null)
 
         val record = viewModel.record.first()
@@ -68,6 +69,7 @@ class FormViewModelTest {
     @Test
     fun `updateField mutates the record and persists a draft`() = runTest(testDispatcher) {
         val repository: SurveyRepository = mock()
+        whenever(repository.countAll()).thenReturn(0)
         val viewModel = FormViewModel(repository, recordId = null)
 
         viewModel.updateField { it.copy(firstName = "Juan", gender = Gender.MALE) }
@@ -81,11 +83,37 @@ class FormViewModelTest {
     @Test
     fun `a brand-new record is persisted immediately, before any field is edited`() = runTest(testDispatcher) {
         val repository: SurveyRepository = mock()
+        whenever(repository.countAll()).thenReturn(0)
         val viewModel = FormViewModel(repository, recordId = null)
         advanceUntilIdle()
 
         // Straight to "완료" with no edits must still leave a row for sendToLaptop to find.
         verify(repository).saveDraft(viewModel.record.first())
+    }
+
+    @Test
+    fun `a brand-new record is assigned an auto-generated No and today's date`() = runTest(testDispatcher) {
+        val repository: SurveyRepository = mock()
+        whenever(repository.countAll()).thenReturn(0)
+
+        val viewModel = FormViewModel(repository, recordId = null, devicePrefix = "A3F2")
+        advanceUntilIdle()
+
+        val record = viewModel.record.first()
+        assertEquals("TAB-A3F2-0001", record.no)
+        assertEquals(com.medmission.survey.util.todayLocalDateString(), record.date)
+        verify(repository).saveDraft(record)
+    }
+
+    @Test
+    fun `the Nth new record on a device gets index N`() = runTest(testDispatcher) {
+        val repository: SurveyRepository = mock()
+        whenever(repository.countAll()).thenReturn(5)
+
+        val viewModel = FormViewModel(repository, recordId = null, devicePrefix = "A3F2")
+        advanceUntilIdle()
+
+        assertEquals("TAB-A3F2-0006", viewModel.record.first().no)
     }
 
     @Test
@@ -179,6 +207,7 @@ class FormViewModelTest {
     @Test
     fun `toggling a medical history item adds and removes it from the set`() = runTest(testDispatcher) {
         val repository: SurveyRepository = mock()
+        whenever(repository.countAll()).thenReturn(0)
         val viewModel = FormViewModel(repository, recordId = null)
 
         viewModel.toggleMedicalHistory(MedicalHistoryItem.ASTHMA)
@@ -193,6 +222,7 @@ class FormViewModelTest {
     @Test
     fun `selecting NONE clears any other selected symptoms`() = runTest(testDispatcher) {
         val repository: SurveyRepository = mock()
+        whenever(repository.countAll()).thenReturn(0)
         val viewModel = FormViewModel(repository, recordId = null)
 
         viewModel.toggleSymptom(com.medmission.survey.data.model.Symptom.COUGH)
@@ -206,6 +236,7 @@ class FormViewModelTest {
     @Test
     fun `selecting another symptom clears a previously selected NONE`() = runTest(testDispatcher) {
         val repository: SurveyRepository = mock()
+        whenever(repository.countAll()).thenReturn(0)
         val viewModel = FormViewModel(repository, recordId = null)
 
         viewModel.toggleSymptom(com.medmission.survey.data.model.Symptom.NONE)

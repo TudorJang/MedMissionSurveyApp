@@ -86,4 +86,23 @@ class SurveyDaoTest {
     fun `getById returns null for unknown id`() = runBlocking {
         assertNull(dao.getById("does-not-exist"))
     }
+
+    @Test
+    fun `countAll reflects the number of stored records`() = runBlocking {
+        assertEquals(0, dao.countAll())
+
+        dao.upsert(SurveyRecord(firstName = "Ana"))
+        dao.upsert(SurveyRecord(firstName = "Ben"))
+
+        assertEquals(2, dao.countAll())
+    }
+
+    @Test
+    fun `countAll does not double-count an upsert that overwrites an existing record`() = runBlocking {
+        val record = SurveyRecord(firstName = "Ana")
+        dao.upsert(record)
+        dao.upsert(record.copy(firstName = "Ana Maria"))
+
+        assertEquals(1, dao.countAll())
+    }
 }

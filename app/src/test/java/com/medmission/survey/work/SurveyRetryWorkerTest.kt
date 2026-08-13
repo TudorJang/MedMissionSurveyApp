@@ -30,6 +30,7 @@ private class FakeSurveyDao : SurveyDao {
     override fun observeAll(): Flow<List<SurveyRecord>> = flowOf(records.values.toList())
     override suspend fun getByStatus(status: SyncStatus): List<SurveyRecord> =
         records.values.filter { it.status == status }
+    override suspend fun countAll(): Int = records.size
 }
 
 private class FakeLaptopEndpointDao : LaptopEndpointDao {

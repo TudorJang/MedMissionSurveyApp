@@ -1,6 +1,7 @@
 package com.medmission.survey
 
 import android.app.Application
+import android.provider.Settings
 import androidx.room.Room
 import androidx.work.Configuration
 import androidx.work.WorkerFactory
@@ -13,6 +14,7 @@ import com.medmission.survey.data.network.NsdDiscoveryService
 import com.medmission.survey.data.network.OkHttpSurveyApiClient
 import com.medmission.survey.data.repository.LaptopEndpointRepository
 import com.medmission.survey.data.repository.SurveyRepository
+import com.medmission.survey.util.devicePrefixFrom
 import com.medmission.survey.work.SurveyRetryWorker
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
@@ -42,6 +44,14 @@ class SurveyApplication : Application(), Configuration.Provider {
 
     val nsdDiscoveryService: NsdDiscoveryService by lazy {
         AndroidNsdDiscoveryService(this)
+    }
+
+    // Distinguishes this tablet's records from every other tablet's in the "No." field —
+    // ANDROID_ID is stable for the life of the install (survives app updates, resets only
+    // on factory reset), so records numbered on this device keep a consistent prefix.
+    val devicePrefix: String by lazy {
+        val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+        devicePrefixFrom(androidId)
     }
 
     private val appWorkerFactory = object : WorkerFactory() {

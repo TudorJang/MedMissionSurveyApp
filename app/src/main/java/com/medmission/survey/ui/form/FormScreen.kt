@@ -37,8 +37,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import com.medmission.survey.data.model.AlcoholAmount
@@ -54,6 +56,11 @@ import com.medmission.survey.ui.theme.ClayAmber
 import com.medmission.survey.ui.theme.ClinicalTeal
 import com.medmission.survey.ui.theme.MutedSlate
 import com.medmission.survey.ui.theme.SurfaceTint
+import com.medmission.survey.util.calculateAge
+import com.medmission.survey.util.filterVitalSignInput
+import com.medmission.survey.util.formatBirthDateInput
+import com.medmission.survey.util.formatCellPhoneInput
+import com.medmission.survey.util.formatZipInput
 
 // ---------------------------------------------------------------------------
 // Physician / AI-only content, transcribed from docs/reference/Survey.pdf.
@@ -125,16 +132,21 @@ fun FormScreen(
             // ---------------- Patient Information ----------------
             SectionCard(title = "Patient Information") {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // No. and Date are assigned once by FormViewModel when the record is
+                    // created (device-prefixed sequential index; local creation date) and
+                    // never touched again, so both fields are display-only here.
                     TextFieldRow(
                         label = "No.",
                         value = record.no,
-                        onValueChange = { v -> onFieldChange { it.copy(no = v) } },
+                        onValueChange = {},
+                        enabled = false,
                         modifier = Modifier.weight(1f),
                     )
                     TextFieldRow(
                         label = "Date",
                         value = record.date,
-                        onValueChange = { v -> onFieldChange { it.copy(date = v) } },
+                        onValueChange = {},
+                        enabled = false,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -153,16 +165,22 @@ fun FormScreen(
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    TextFieldRow(
+                    MaskedTextFieldRow(
                         label = "Birth Date",
-                        value = record.birthDate,
-                        onValueChange = { v -> onFieldChange { it.copy(birthDate = v) } },
+                        externalValue = record.birthDate.orEmpty(),
+                        mask = ::formatBirthDateInput,
+                        onValueChange = { formatted ->
+                            onFieldChange { it.copy(birthDate = formatted, age = calculateAge(formatted)) }
+                        },
                         modifier = Modifier.weight(1f),
                     )
+                    // Derived from Birth Date by FormScreen on every change above, so this
+                    // is display-only — no separate onValueChange path exists for it.
                     IntFieldRow(
                         label = "Age",
                         value = record.age,
-                        onValueChange = { v -> onFieldChange { it.copy(age = v) } },
+                        onValueChange = {},
+                        enabled = false,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -191,9 +209,10 @@ fun FormScreen(
                         onValueChange = { v -> onFieldChange { it.copy(stateProvince = v) } },
                         modifier = Modifier.weight(1f),
                     )
-                    TextFieldRow(
+                    MaskedTextFieldRow(
                         label = "ZIP",
-                        value = record.zip,
+                        externalValue = record.zip.orEmpty(),
+                        mask = ::formatZipInput,
                         onValueChange = { v -> onFieldChange { it.copy(zip = v) } },
                         modifier = Modifier.weight(0.7f),
                     )
@@ -206,9 +225,10 @@ fun FormScreen(
                         keyboardType = KeyboardType.Email,
                         modifier = Modifier.weight(1f),
                     )
-                    TextFieldRow(
+                    MaskedTextFieldRow(
                         label = "Cell Phone",
-                        value = record.cellPhone,
+                        externalValue = record.cellPhone.orEmpty(),
+                        mask = ::formatCellPhoneInput,
                         onValueChange = { v -> onFieldChange { it.copy(cellPhone = v) } },
                         keyboardType = KeyboardType.Phone,
                         modifier = Modifier.weight(1f),
@@ -659,6 +679,49 @@ private fun TextFieldRow(
     )
 }
 
+/**
+ * A text field whose content is rewritten on every keystroke by [mask] (inserting dashes,
+ * dropping non-digits, truncating length). Needs [TextFieldValue] rather than plain
+ * [TextFieldRow]'s `String`: feeding a reformatted string back through the `String`
+ * overload leaves Compose to guess the new cursor position from a diff against the old
+ * text, and it guesses wrong as soon as the reformat changes the string's length (e.g.
+ * inserting a dash) — later keystrokes land mid-string and scramble already-typed digits.
+ * Pinning the cursor to the end after every reformat is correct here because these masks
+ * are strictly append-typed; nothing here supports editing in the middle.
+ */
+@Composable
+private fun MaskedTextFieldRow(
+    label: String,
+    externalValue: String,
+    mask: (String) -> String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    keyboardType: KeyboardType = KeyboardType.Number,
+) {
+    var fieldValue by remember {
+        mutableStateOf(TextFieldValue(externalValue, TextRange(externalValue.length)))
+    }
+    // Re-sync when the record's value changed for a reason other than this field's own
+    // edits (e.g. a different record was loaded) — mirrors NumericFieldRow's pattern.
+    LaunchedEffect(externalValue) {
+        if (externalValue != fieldValue.text) {
+            fieldValue = TextFieldValue(externalValue, TextRange(externalValue.length))
+        }
+    }
+    OutlinedTextField(
+        value = fieldValue,
+        onValueChange = { new ->
+            val masked = mask(new.text)
+            fieldValue = TextFieldValue(masked, TextRange(masked.length))
+            onValueChange(masked)
+        },
+        label = { Text(label) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        modifier = modifier.fillMaxWidth(),
+    )
+}
+
 // ---------------------------------------------------------------------------
 // Numeric input
 //
@@ -678,6 +741,7 @@ private fun NumericFieldRow(
     normalize: (String) -> String,
     onTextChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     // rememberSaveable, not remember: an in-progress unparseable entry (e.g. "38.") must
     // survive Activity recreation (rotation, config change, low-memory recreation), or the
@@ -691,13 +755,18 @@ private fun NumericFieldRow(
     OutlinedTextField(
         value = text,
         onValueChange = {
-            text = it
-            onTextChange(it)
+            // Vital Signs fields must only ever hold digits and '.': filtering here (not
+            // just relying on the Number/Decimal keyboard) also blocks paste and hardware
+            // keyboard input.
+            val filtered = filterVitalSignInput(it)
+            text = filtered
+            onTextChange(filtered)
         },
         label = { Text(label) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         modifier = modifier.fillMaxWidth(),
+        enabled = enabled,
     )
 }
 
@@ -707,6 +776,7 @@ private fun IntFieldRow(
     value: Int?,
     onValueChange: (Int?) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) = NumericFieldRow(
     label = label,
     externalText = value?.toString().orEmpty(),
@@ -714,6 +784,7 @@ private fun IntFieldRow(
     normalize = { it.toIntOrNull()?.toString().orEmpty() },
     onTextChange = { onValueChange(it.toIntOrNull()) },
     modifier = modifier,
+    enabled = enabled,
 )
 
 @Composable
@@ -722,6 +793,7 @@ private fun DoubleFieldRow(
     value: Double?,
     onValueChange: (Double?) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) = NumericFieldRow(
     label = label,
     externalText = value?.toString().orEmpty(),
@@ -732,6 +804,7 @@ private fun DoubleFieldRow(
     normalize = { it.toCanonicalDouble()?.toString().orEmpty() },
     onTextChange = { onValueChange(it.toCanonicalDouble()) },
     modifier = modifier,
+    enabled = enabled,
 )
 
 private fun String.toCanonicalDouble(): Double? = replace(',', '.').toDoubleOrNull()

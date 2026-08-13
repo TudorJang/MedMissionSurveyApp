@@ -49,7 +49,9 @@ fun SurveyNavGraph(navController: NavHostController = rememberNavController()) {
             // Scoped to the back-stack entry's ViewModelStore, so a rotation does not
             // rebuild FormViewModel and mint a fresh UUID for an in-progress draft.
             val viewModel: FormViewModel = viewModel(
-                factory = viewModelFactory { initializer { FormViewModel(app.surveyRepository, recordId) } },
+                factory = viewModelFactory {
+                    initializer { FormViewModel(app.surveyRepository, recordId, app.devicePrefix) }
+                },
             )
             LaunchedEffect(recordId) {
                 if (recordId != null) viewModel.load()

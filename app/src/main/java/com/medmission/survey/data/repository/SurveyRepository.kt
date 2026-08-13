@@ -25,6 +25,8 @@ class SurveyRepository(
 
     suspend fun getPendingRecords(): List<SurveyRecord> = surveyDao.getByStatus(SyncStatus.PENDING)
 
+    suspend fun countAll(): Int = surveyDao.countAll()
+
     suspend fun sendToLaptop(recordId: String, laptopId: String): Result<Unit> {
         // Not retryable and nothing in the DB to update — there is no row to count
         // attempts against. Since FormViewModel now persists every record at creation,

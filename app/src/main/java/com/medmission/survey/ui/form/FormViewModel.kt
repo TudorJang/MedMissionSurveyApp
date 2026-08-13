@@ -7,6 +7,8 @@ import com.medmission.survey.data.model.Symptom
 import com.medmission.survey.data.model.SurveyRecord
 import com.medmission.survey.data.repository.SurveyRepository
 import com.medmission.survey.data.model.SyncStatus
+import com.medmission.survey.util.formatRecordNo
+import com.medmission.survey.util.todayLocalDateString
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -15,12 +17,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @OptIn(FlowPreview::class)
 class FormViewModel(
     private val repository: SurveyRepository,
     private val recordId: String?,
+    private val devicePrefix: String = "0000",
 ) : ViewModel() {
 
     private val _record = MutableStateFlow(SurveyRecord(recordId = recordId ?: java.util.UUID.randomUUID().toString()))
@@ -40,11 +44,18 @@ class FormViewModel(
         // can't find it. Only for genuinely new records — an existing recordId is
         // loaded by load() and must not be overwritten with this placeholder.
         if (recordId == null) {
-            // Capture the value now, not inside the coroutine: by the time the
-            // coroutine actually runs the user may already have edited a field,
-            // and we'd redundantly re-save the newer value.
-            val initial = _record.value
-            viewModelScope.launch { repository.saveDraft(initial) }
+            viewModelScope.launch {
+                // No./Date are assigned once, here, from a real DB round-trip — so this
+                // merges onto whatever the record looks like *when it resolves* via
+                // update{}, rather than overwriting with a value snapshotted before the
+                // suspend point. The user could otherwise type into a field while
+                // countAll() is in flight and have that edit clobbered.
+                val index = repository.countAll() + 1
+                val no = formatRecordNo(devicePrefix, index)
+                val date = todayLocalDateString()
+                _record.update { it.copy(no = no, date = date) }
+                repository.saveDraft(_record.value)
+            }
         }
 
         // Single serialized writer for autosave. Without this, updateField launched a
