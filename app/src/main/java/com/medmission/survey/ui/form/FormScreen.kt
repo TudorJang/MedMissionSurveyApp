@@ -133,7 +133,9 @@ fun FormScreen(
 
             // ---------------- Patient Information ----------------
             SectionCard(title = "Patient Information") {
-                var activeGeoDialog by remember { mutableStateOf<GeoDialogStep?>(null) }
+                // rememberSaveable, not remember: a rotation mid-cascade must not close the
+                // open dialog (the enum is Serializable, so the default saver handles it).
+                var activeGeoDialog by rememberSaveable { mutableStateOf<GeoDialogStep?>(null) }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     // No. and Date are assigned once by FormViewModel when the record is
                     // created (device-prefixed sequential index; local creation date) and

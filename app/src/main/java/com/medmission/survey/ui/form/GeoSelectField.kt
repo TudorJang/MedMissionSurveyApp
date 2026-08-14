@@ -88,6 +88,7 @@ fun GeoSelectField(
                 onValueChange = {},
                 readOnly = true,
                 enabled = false,
+                singleLine = true,
                 label = { Text(label) },
                 colors = OutlinedTextFieldDefaults.colors(
                     disabledTextColor = MaterialTheme.colorScheme.onSurface,
