@@ -1,0 +1,22 @@
+package com.medmission.survey.data.psgc
+
+/**
+ * A fully-qualified path through the PSGC hierarchy. [province] is null when the region has
+ * no province level (currently only NCR) — never a placeholder string like "NCR".
+ */
+data class PsgcPath(
+    val region: String,
+    val province: String?,
+    val city: String? = null,
+    val barangay: String? = null,
+)
+
+data class PsgcHierarchy(
+    val regions: List<String>,
+    /** Empty list means the region has no province level (e.g. NCR) — cities sit directly under it. */
+    val provincesByRegion: Map<String, List<String>>,
+    /** Keyed by a path with city and barangay null. */
+    val citiesByParent: Map<PsgcPath, List<String>>,
+    /** Keyed by a path with barangay null. */
+    val barangaysByCity: Map<PsgcPath, List<String>>,
+)
