@@ -1,7 +1,9 @@
 package com.medmission.survey.data.psgc
 
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 private val METADATA_KEYS = setOf("population", "class", "cityClass", "subMunicipality")
 
@@ -57,3 +59,20 @@ fun parsePsgcHierarchy(root: JsonObject): PsgcHierarchy {
 
     return PsgcHierarchy(regions, provincesByRegion, citiesByParent, barangaysByCity)
 }
+
+fun parseZipByName(root: JsonObject): Map<String, String> {
+    val result = mutableMapOf<String, String>()
+    for ((zip, value) in root) {
+        val names = when (value) {
+            is JsonArray -> value.map { it.jsonPrimitive.content }
+            else -> listOf(value.jsonPrimitive.content)
+        }
+        for (name in names) {
+            result.putIfAbsent(name, zip)
+        }
+    }
+    return result
+}
+
+fun findZip(zipByName: Map<String, String>, city: String, barangay: String?): String? =
+    barangay?.let { zipByName[it] } ?: zipByName[city]

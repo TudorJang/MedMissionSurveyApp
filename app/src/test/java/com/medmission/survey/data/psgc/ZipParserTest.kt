@@ -1,0 +1,50 @@
+package com.medmission.survey.data.psgc
+
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Test
+
+private val SAMPLE_ZIPS = """
+{
+  "1920": "Taytay",
+  "1000": "Manila CPO - Ermita",
+  "1100": ["Central", "Piñahan", "Project 6"]
+}
+""".trimIndent()
+
+class ZipParserTest {
+    private fun parse() = parseZipByName(Json.parseToJsonElement(SAMPLE_ZIPS).jsonObject)
+
+    @Test
+    fun `a plain string entry maps its name to its zip`() {
+        assertEquals("1920", parse()["Taytay"])
+    }
+
+    @Test
+    fun `an array entry maps every name in it to the same zip`() {
+        val zipByName = parse()
+        assertEquals("1100", zipByName["Central"])
+        assertEquals("1100", zipByName["Piñahan"])
+        assertEquals("1100", zipByName["Project 6"])
+    }
+
+    @Test
+    fun `findZip prefers a barangay match over a city match`() {
+        val zipByName = mapOf("Ermita" to "1000", "Manila" to "1099")
+        assertEquals("1000", findZip(zipByName, city = "Manila", barangay = "Ermita"))
+    }
+
+    @Test
+    fun `findZip falls back to the city name when the barangay has no entry`() {
+        val zipByName = parse()
+        assertEquals("1920", findZip(zipByName, city = "Taytay", barangay = "San Isidro"))
+    }
+
+    @Test
+    fun `findZip returns null when neither barangay nor city is found`() {
+        val zipByName = parse()
+        assertNull(findZip(zipByName, city = "Unknown City", barangay = "Unknown Barangay"))
+    }
+}
