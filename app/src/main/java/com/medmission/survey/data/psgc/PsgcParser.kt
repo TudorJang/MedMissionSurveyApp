@@ -75,4 +75,4 @@ fun parseZipByName(root: JsonObject): Map<String, String> {
 }
 
 fun findZip(zipByName: Map<String, String>, city: String, barangay: String?): String? =
-    barangay?.let { zipByName[it] } ?: zipByName[city]
+    zipByName[city] ?: barangay?.let { zipByName[it] }

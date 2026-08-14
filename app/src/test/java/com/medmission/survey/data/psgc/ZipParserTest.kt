@@ -31,20 +31,30 @@ class ZipParserTest {
     }
 
     @Test
-    fun `findZip prefers a barangay match over a city match`() {
+    fun `findZip prefers a city match over a barangay match`() {
         val zipByName = mapOf("Ermita" to "1000", "Manila" to "1099")
-        assertEquals("1000", findZip(zipByName, city = "Manila", barangay = "Ermita"))
+        assertEquals("1099", findZip(zipByName, city = "Manila", barangay = "Ermita"))
     }
 
     @Test
-    fun `findZip falls back to the city name when the barangay has no entry`() {
+    fun `findZip falls back to the barangay name when the city has no entry`() {
         val zipByName = parse()
-        assertEquals("1920", findZip(zipByName, city = "Taytay", barangay = "San Isidro"))
+        assertEquals("1920", findZip(zipByName, city = "Unknown City", barangay = "Taytay"))
     }
 
     @Test
     fun `findZip returns null when neither barangay nor city is found`() {
         val zipByName = parse()
         assertNull(findZip(zipByName, city = "Unknown City", barangay = "Unknown Barangay"))
+    }
+
+    @Test
+    fun `findZip prefers the city's own zip over a colliding barangay from another city`() {
+        // "San Isidro" is a common barangay name that recurs across many unrelated cities.
+        // Here it collides with a barangay entry that belongs to a different city's ZIP area
+        // ("8888", some other town's "San Isidro") while "Taytay" itself maps to "1920".
+        // City-first precedence must return Taytay's own zip, not the colliding barangay's.
+        val zipByName = mapOf("Taytay" to "1920", "San Isidro" to "8888")
+        assertEquals("1920", findZip(zipByName, city = "Taytay", barangay = "San Isidro"))
     }
 }
