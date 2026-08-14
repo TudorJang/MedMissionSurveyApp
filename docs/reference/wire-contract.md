@@ -60,7 +60,6 @@ markers only. They are not in the data model and never appear in this payload.
     "age": 46,
     "address": "12 Mabini St, Simona Subd.",
     "region": "NCR",
-    "province": null,
     "city": "Manila",
     "barangay": "Ermita",
     "zip": "1000",
@@ -124,7 +123,8 @@ Every field is optional; the app never blocks send on a missing value.
 | `recordId` | String (UUID), always present |
 | `no` | String |
 | `date` | String — see §6 |
-| `patient.firstName`, `.lastName`, `.address`, `.city`, `.zip`, `.email`, `.cellPhone` | String |
+| `patient.firstName`, `.lastName`, `.city`, `.zip`, `.email`, `.cellPhone` | String |
+| `patient.address` | String — as of the PSGC address hierarchy feature, holds only street/subdivision/landmark text, not a full address. The complete address is `address` + `barangay` + `city` + `province` + `region` combined; this field previously held the complete free-text address. |
 | `patient.region`, `.province`, `.barangay` | String — PSA official name from the bundled PSGC dataset, or an arbitrary free-text string if "Not listed" was chosen on the tablet. `.province` is absent for addresses in NCR (no province level exists there). |
 | `patient.birthDate` | String — see §6 |
 | `patient.age` | Int |
