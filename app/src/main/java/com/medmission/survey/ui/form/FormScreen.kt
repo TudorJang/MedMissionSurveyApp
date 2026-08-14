@@ -62,7 +62,6 @@ import com.medmission.survey.util.filterVitalSignInput
 import com.medmission.survey.util.formatBirthDateInput
 import com.medmission.survey.util.formatCellPhoneInput
 import com.medmission.survey.util.formatYearInput
-import com.medmission.survey.util.formatZipInput
 
 // ---------------------------------------------------------------------------
 // Physician / AI-only content, transcribed from docs/reference/Survey.pdf.
@@ -116,6 +115,7 @@ fun FormScreen(
     onToggleMedicalHistory: (MedicalHistoryItem) -> Unit,
     onToggleSymptom: (Symptom) -> Unit,
     onDone: () -> Unit,
+    psgcRepository: com.medmission.survey.data.psgc.PsgcRepository,
 ) {
     Scaffold { padding ->
         // A plain scrolling Column rather than a LazyColumn: the numeric fields below keep
@@ -133,6 +133,7 @@ fun FormScreen(
 
             // ---------------- Patient Information ----------------
             SectionCard(title = "Patient Information") {
+                var activeGeoDialog by remember { mutableStateOf<GeoDialogStep?>(null) }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     // No. and Date are assigned once by FormViewModel when the record is
                     // created (device-prefixed sequential index; local creation date) and
@@ -193,32 +194,85 @@ fun FormScreen(
                     optionLabel = { it.label },
                     onSelect = { v -> onFieldChange { it.copy(gender = v) } },
                 )
+                GeoSelectField(
+                    label = "Region",
+                    value = record.region,
+                    options = psgcRepository.regions(),
+                    isDialogOpen = activeGeoDialog == GeoDialogStep.REGION,
+                    onOpenDialog = { activeGeoDialog = GeoDialogStep.REGION },
+                    onDismissDialog = { activeGeoDialog = null },
+                    onSelect = { picked ->
+                        val wasEmpty = record.region == null
+                        onFieldChange {
+                            it.copy(region = picked, province = null, city = null, barangay = null, zip = null)
+                        }
+                        activeGeoDialog = when {
+                            !wasEmpty -> null
+                            psgcRepository.provinces(picked).isEmpty() -> GeoDialogStep.CITY
+                            else -> GeoDialogStep.PROVINCE
+                        }
+                    },
+                    onFreeText = { text -> onFieldChange { it.copy(region = text) } },
+                )
+                GeoSelectField(
+                    label = "Province",
+                    value = record.province,
+                    options = record.region?.let { psgcRepository.provinces(it) }.orEmpty(),
+                    isDialogOpen = activeGeoDialog == GeoDialogStep.PROVINCE,
+                    onOpenDialog = { activeGeoDialog = GeoDialogStep.PROVINCE },
+                    onDismissDialog = { activeGeoDialog = null },
+                    onSelect = { picked ->
+                        val wasEmpty = record.province == null
+                        onFieldChange { it.copy(province = picked, city = null, barangay = null, zip = null) }
+                        activeGeoDialog = if (wasEmpty) GeoDialogStep.CITY else null
+                    },
+                    onFreeText = { text -> onFieldChange { it.copy(province = text) } },
+                    enabled = record.region != null,
+                )
+                GeoSelectField(
+                    label = "City / Municipality",
+                    value = record.city,
+                    options = record.region?.let { psgcRepository.cities(it, record.province) }.orEmpty(),
+                    isDialogOpen = activeGeoDialog == GeoDialogStep.CITY,
+                    onOpenDialog = { activeGeoDialog = GeoDialogStep.CITY },
+                    onDismissDialog = { activeGeoDialog = null },
+                    onSelect = { picked ->
+                        val wasEmpty = record.city == null
+                        val zip = psgcRepository.zip(picked, null)
+                        onFieldChange { it.copy(city = picked, barangay = null, zip = zip) }
+                        activeGeoDialog = if (wasEmpty) GeoDialogStep.BARANGAY else null
+                    },
+                    onFreeText = { text -> onFieldChange { it.copy(city = text) } },
+                    enabled = record.region != null,
+                )
+                GeoSelectField(
+                    label = "Barangay",
+                    value = record.barangay,
+                    options = record.city?.let { city ->
+                        psgcRepository.barangays(record.region.orEmpty(), record.province, city)
+                    }.orEmpty(),
+                    isDialogOpen = activeGeoDialog == GeoDialogStep.BARANGAY,
+                    onOpenDialog = { activeGeoDialog = GeoDialogStep.BARANGAY },
+                    onDismissDialog = { activeGeoDialog = null },
+                    onSelect = { picked ->
+                        val zip = psgcRepository.zip(record.city.orEmpty(), picked) ?: record.zip
+                        onFieldChange { it.copy(barangay = picked, zip = zip) }
+                        activeGeoDialog = null
+                    },
+                    onFreeText = { text -> onFieldChange { it.copy(barangay = text) } },
+                    enabled = record.city != null,
+                )
                 TextFieldRow(
-                    label = "Address",
+                    label = "ZIP",
+                    value = record.zip,
+                    onValueChange = {},
+                    enabled = false,
+                )
+                TextFieldRow(
+                    label = "Street / Subdivision / Landmark",
                     value = record.address,
                     onValueChange = { v -> onFieldChange { it.copy(address = v) } },
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    TextFieldRow(
-                        label = "City",
-                        value = record.city,
-                        onValueChange = { v -> onFieldChange { it.copy(city = v) } },
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextFieldRow(
-                        label = "State/Province",
-                        value = record.stateProvince,
-                        onValueChange = { v -> onFieldChange { it.copy(stateProvince = v) } },
-                        modifier = Modifier.weight(1f),
-                    )
-                    MaskedTextFieldRow(
-                        label = "ZIP",
-                        externalValue = record.zip.orEmpty(),
-                        mask = ::formatZipInput,
-                        onValueChange = { v -> onFieldChange { it.copy(zip = v) } },
-                        modifier = Modifier.weight(0.7f),
-                    )
-                }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     TextFieldRow(
                         label = "Email",
@@ -747,6 +801,8 @@ private fun MaskedTextFieldRow(
 // buffer always shows exactly what was typed, and the parsed value (or null) is what
 // gets persisted — an unparseable value simply persists as null, never blocking input.
 // ---------------------------------------------------------------------------
+
+private enum class GeoDialogStep { REGION, PROVINCE, CITY, BARANGAY }
 
 @Composable
 private fun NumericFieldRow(

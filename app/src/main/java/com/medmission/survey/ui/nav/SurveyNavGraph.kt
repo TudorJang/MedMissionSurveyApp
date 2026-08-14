@@ -63,6 +63,7 @@ fun SurveyNavGraph(navController: NavHostController = rememberNavController()) {
                 onToggleMedicalHistory = { viewModel.toggleMedicalHistory(it) },
                 onToggleSymptom = { viewModel.toggleSymptom(it) },
                 onDone = { navController.navigate("laptopSelect/${record.recordId}") },
+                psgcRepository = app.psgcRepository,
             )
         }
         composable(
