@@ -62,6 +62,7 @@ import com.medmission.survey.util.filterVitalSignInput
 import com.medmission.survey.util.formatBirthDateInput
 import com.medmission.survey.util.formatCellPhoneInput
 import com.medmission.survey.util.formatYearInput
+import com.medmission.survey.util.formatZipInput
 
 // ---------------------------------------------------------------------------
 // Physician / AI-only content, transcribed from docs/reference/Survey.pdf.
@@ -286,11 +287,15 @@ fun FormScreen(
                     },
                     enabled = record.city != null,
                 )
-                TextFieldRow(
+                // Auto-filled by the cascade above but deliberately still editable: the ZIP
+                // lookup has known coverage gaps (Manila-class cities with numbered barangays,
+                // ~28% of city names missing from the dataset), and a read-only field would
+                // make every miss or wrong hit uncorrectable at the point of entry.
+                MaskedTextFieldRow(
                     label = "ZIP",
-                    value = record.zip,
-                    onValueChange = {},
-                    enabled = false,
+                    externalValue = record.zip.orEmpty(),
+                    mask = ::formatZipInput,
+                    onValueChange = { v -> onFieldChange { it.copy(zip = v.ifEmpty { null }) } },
                 )
                 TextFieldRow(
                     label = "Street / Subdivision / Landmark",
