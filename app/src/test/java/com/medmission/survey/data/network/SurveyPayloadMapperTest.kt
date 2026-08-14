@@ -56,8 +56,10 @@ class SurveyPayloadMapperTest {
             gender = Gender.MALE,
             age = 46,
             address = "12 Mabini St",
+            region = "NATIONAL CAPITAL REGION (NCR)",
+            province = null,
             city = "Manila",
-            stateProvince = "NCR",
+            barangay = "Ermita",
             zip = "1000",
             email = "juan@example.com",
             cellPhone = "+63-900-000-0000",
@@ -123,6 +125,9 @@ class SurveyPayloadMapperTest {
         assertEquals(46, patient.getValue("age").jsonPrimitive.int)
         assertEquals("OTHER", patient.getValue("maritalStatus").jsonPrimitive.content)
         assertEquals("Domestic partnership", patient.getValue("maritalStatusOther").jsonPrimitive.content)
+        assertEquals("NATIONAL CAPITAL REGION (NCR)", patient.getValue("region").jsonPrimitive.content)
+        assertEquals("Ermita", patient.getValue("barangay").jsonPrimitive.content)
+        assertEquals(false, patient.containsKey("province")) // null fields are absent, not null (see wire-contract.md §2)
 
         val medicalHistory = root.getValue("medicalHistory").jsonObject
         assertEquals(
