@@ -29,4 +29,16 @@ class PsgcRepository(private val context: Context) {
         hierarchy.barangaysByCity[PsgcPath(region, province, city)].orEmpty()
 
     fun zip(city: String, barangay: String?): String? = findZip(zipByName, city, barangay)
+
+    /**
+     * Forces both `by lazy` datasets to parse now, on whatever thread this is called from.
+     * Intended to be called once from [com.medmission.survey.SurveyApplication.onCreate] on a
+     * background dispatcher, so the ~1.5MB/~45,000-node `hierarchy.json` parse happens off the
+     * main thread and well before `FormScreen` would otherwise trigger it lazily on first
+     * access — without this, opening the form for the first time freezes the UI while it parses.
+     */
+    fun warmUp() {
+        hierarchy
+        zipByName
+    }
 }
