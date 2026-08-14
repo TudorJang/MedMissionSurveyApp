@@ -1,6 +1,7 @@
 package com.medmission.survey.ui.form
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -9,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,7 +46,10 @@ fun GeoSelectField(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    val isFreeText = value != null && value !in options
+    // A blank value counts as "unset" rather than "free text": otherwise picking "Not listed"
+    // (which sets the value to "") is a one-way door — clearing the free-text field back to
+    // empty could never revert to picker mode.
+    val isFreeText = !value.isNullOrEmpty() && value !in options
     if (isFreeText) {
         OutlinedTextField(
             value = value.orEmpty(),
@@ -57,18 +62,31 @@ fun GeoSelectField(
         return
     }
 
-    OutlinedTextField(
-        value = value.orEmpty(),
-        onValueChange = {},
-        readOnly = true,
-        label = { Text(label) },
-        modifier = if (enabled) {
-            modifier.fillMaxWidth().clickable(onClick = onOpenDialog)
-        } else {
-            modifier.fillMaxWidth()
+    // BasicTextField installs its own pointer-input handling for focus/cursor placement even
+    // when readOnly, and that child-first handling can consume a tap before a `clickable`
+    // modifier on the field itself ever sees it — making the field intermittently dead to
+    // taps. Wrapping the (disabled, so gesture-free) field in a `clickable` Box sidesteps
+    // that: the Box's own gesture detector handles the tap directly, and disabled colors are
+    // overridden below so a supposedly-active field doesn't render as greyed-out.
+    Box(
+        modifier = modifier.fillMaxWidth().let {
+            if (enabled) it.clickable(onClick = onOpenDialog) else it
         },
-        enabled = enabled,
-    )
+    ) {
+        OutlinedTextField(
+            value = value.orEmpty(),
+            onValueChange = {},
+            readOnly = true,
+            enabled = false,
+            label = { Text(label) },
+            colors = OutlinedTextFieldDefaults.colors(
+                disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                disabledBorderColor = MaterialTheme.colorScheme.outline,
+                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            ),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 
     if (isDialogOpen) {
         GeoSelectDialog(
