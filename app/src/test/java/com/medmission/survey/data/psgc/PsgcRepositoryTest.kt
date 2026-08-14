@@ -32,4 +32,13 @@ class PsgcRepositoryTest {
     fun `Taytay resolves to ZIP 1920`() {
         assertEquals("1920", repository.zip(city = "Taytay", barangay = null))
     }
+
+    @Test
+    fun `a barangay name that collides with another city's ZIP entry does not override its own city's ZIP`() {
+        // "San Isidro" exists as a barangay in many cities and matches an unrelated
+        // Quezon City entry (1113) in the ZIP dataset. City-first precedence must keep
+        // Taytay's own ZIP. This pins the real-dataset behavior end-to-end; the same
+        // precedence is unit-tested with fixtures in ZipParserTest.
+        assertEquals("1920", repository.zip(city = "Taytay", barangay = "San Isidro"))
+    }
 }
