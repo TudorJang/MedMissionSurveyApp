@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextRange
@@ -60,6 +61,7 @@ import com.medmission.survey.util.calculateAge
 import com.medmission.survey.util.filterVitalSignInput
 import com.medmission.survey.util.formatBirthDateInput
 import com.medmission.survey.util.formatCellPhoneInput
+import com.medmission.survey.util.formatYearInput
 import com.medmission.survey.util.formatZipInput
 
 // ---------------------------------------------------------------------------
@@ -239,7 +241,20 @@ fun FormScreen(
                     options = MARITAL_STATUS_OPTIONS,
                     selected = record.maritalStatus,
                     optionLabel = { it.label },
-                    onSelect = { v -> onFieldChange { it.copy(maritalStatus = v) } },
+                    onSelect = { v ->
+                        onFieldChange {
+                            it.copy(
+                                maritalStatus = v,
+                                maritalStatusOther = if (v == MaritalStatus.OTHER) it.maritalStatusOther else null,
+                            )
+                        }
+                    },
+                )
+                TextFieldRow(
+                    label = "Other (please specify)",
+                    value = record.maritalStatusOther,
+                    onValueChange = { v -> onFieldChange { it.copy(maritalStatusOther = v) } },
+                    enabled = record.maritalStatus == MaritalStatus.OTHER,
                 )
             }
 
@@ -382,7 +397,8 @@ fun FormScreen(
                 TextFieldRow(
                     label = "If yes, year of diagnosis",
                     value = record.diagnosisYear,
-                    onValueChange = { v -> onFieldChange { it.copy(diagnosisYear = v) } },
+                    onValueChange = { v -> onFieldChange { it.copy(diagnosisYear = formatYearInput(v)) } },
+                    keyboardType = KeyboardType.Number,
                     enabled = record.everDiagnosedTB == YesNoUnknown.YES,
                 )
                 YesNoUnknownChips(
@@ -765,7 +781,16 @@ private fun NumericFieldRow(
         label = { Text(label) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().onFocusChanged { focusState ->
+            // Tidy up ambiguous partial input ("5." -> "5.0", ".5" -> "0.5", "173" ->
+            // "173.0") once the user leaves the field — never while they're still typing,
+            // or this fights the in-progress buffer the same way deriving display from
+            // the parsed value always has (see the comment above this section).
+            if (!focusState.isFocused) {
+                val normalized = normalize(text)
+                if (normalized != text) text = normalized
+            }
+        },
         enabled = enabled,
     )
 }

@@ -79,6 +79,15 @@ class FormFormattingTest {
         assertEquals("1000", formatZipInput("1a0b0c0d5"))
     }
 
+    // ---- formatYearInput ----
+
+    @Test
+    fun `formatYearInput keeps only the first 4 digits`() {
+        assertEquals("2019", formatYearInput("2019"))
+        assertEquals("2019", formatYearInput("20195"))
+        assertEquals("2019", formatYearInput("2y0o1u9"))
+    }
+
     // ---- filterVitalSignInput ----
 
     @Test

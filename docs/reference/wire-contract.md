@@ -64,7 +64,8 @@ markers only. They are not in the data model and never appear in this payload.
     "zip": "1000",
     "email": "juan@example.com",
     "cellPhone": "+63-900-000-0000",
-    "maritalStatus": "MARRIED"
+    "maritalStatus": "OTHER",
+    "maritalStatusOther": "Domestic partnership"
   },
   "medicalHistory": {
     "items": ["ASTHMA", "DIABETES"],
@@ -123,13 +124,15 @@ Every field is optional; the app never blocks send on a missing value.
 | `patient.birthDate` | String — see §6 |
 | `patient.age` | Int |
 | `patient.gender`, `.maritalStatus` | String enum — see §5 |
+| `patient.maritalStatusOther` | String — only meaningful when `maritalStatus` is `OTHER`; the app clears it whenever `maritalStatus` changes away from `OTHER` |
 | `medicalHistory.items` | Array of String enum — see §5 |
 | `medicalHistory.others`, `.recentSurgeriesOrHospitalization`, `.currentMedication` | String |
 | `vitalSigns.height`, `.weight`, `.temperature`, `.oxygenSaturation`, `.bloodGlucose` | Double |
 | `vitalSigns.bpSystolic`, `.bpDiastolic`, `.pulseRate`, `.respiratoryRate` | Int |
 | `symptoms` | Array of String enum — see §5. Always present, may be `[]` |
 | `tbInfo.everDiagnosedTB`, `.everReceivedTreatment`, `.treatmentCompleted`, `.closeContactActiveTB`, `.householdMemberTBTreatment` | String enum — see §5 |
-| `tbInfo.diagnosisYear`, `.closeContactWhen` | String (free text, no enforced format) |
+| `tbInfo.diagnosisYear` | String — digits only, up to 4 characters (e.g. `"2015"`) |
+| `tbInfo.closeContactWhen` | String (free text, no enforced format) |
 | `smoking.status`, `smoking.duration` | String enum — see §5 |
 | `alcohol.drinks` | Boolean |
 | `alcohol.amount` | String enum — see §5 |
@@ -155,7 +158,7 @@ is what the tablet displays; the bridge should never match on it.
 | `SINGLE` | Single |
 | `DIVORCED` | Divorced |
 | `WIDOWED` | Widowed |
-| `OTHER` | Other |
+| `OTHER` | Other — free-text detail travels alongside in `patient.maritalStatusOther` |
 
 ### `medicalHistory.items[]` — `MedicalHistoryItem`
 

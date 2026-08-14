@@ -20,6 +20,7 @@ object SurveyPayloadMapper {
             email = record.email,
             cellPhone = record.cellPhone,
             maritalStatus = record.maritalStatus?.name,
+            maritalStatusOther = record.maritalStatusOther,
         ),
         medicalHistory = MedicalHistoryDto(
             items = record.medicalHistory.map { it.name },

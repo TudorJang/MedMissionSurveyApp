@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "fa2e1e341d90ab5cc951f2d5094207ee",
+    "identityHash": "d105d342a15ec8039f8554648dc83bf8",
     "entities": [
       {
         "tableName": "survey_records",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`recordId` TEXT NOT NULL, `status` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `sentAt` INTEGER, `targetLaptopId` TEXT, `sendAttempts` INTEGER NOT NULL, `no` TEXT, `date` TEXT, `firstName` TEXT, `lastName` TEXT, `birthDate` TEXT, `gender` TEXT, `age` INTEGER, `address` TEXT, `city` TEXT, `stateProvince` TEXT, `zip` TEXT, `email` TEXT, `cellPhone` TEXT, `maritalStatus` TEXT, `medicalHistory` TEXT NOT NULL, `medicalHistoryOthers` TEXT, `recentSurgeriesOrHospitalization` TEXT, `currentMedication` TEXT, `height` REAL, `weight` REAL, `bpSystolic` INTEGER, `bpDiastolic` INTEGER, `pulseRate` INTEGER, `respiratoryRate` INTEGER, `temperature` REAL, `oxygenSaturation` REAL, `bloodGlucose` REAL, `symptoms` TEXT NOT NULL, `everDiagnosedTB` TEXT, `diagnosisYear` TEXT, `everReceivedTreatment` TEXT, `treatmentCompleted` TEXT, `closeContactActiveTB` TEXT, `closeContactWhen` TEXT, `householdMemberTBTreatment` TEXT, `smokingStatus` TEXT, `smokingDuration` TEXT, `drinksAlcohol` INTEGER, `alcoholAmount` TEXT, `dustSmokeChemicalExposure` INTEGER, `cooksWithSolidFuels` INTEGER, `secondhandSmokeExposure` INTEGER, `crowdedLivingConditions` INTEGER, PRIMARY KEY(`recordId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`recordId` TEXT NOT NULL, `status` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `sentAt` INTEGER, `targetLaptopId` TEXT, `sendAttempts` INTEGER NOT NULL, `no` TEXT, `date` TEXT, `firstName` TEXT, `lastName` TEXT, `birthDate` TEXT, `gender` TEXT, `age` INTEGER, `address` TEXT, `city` TEXT, `stateProvince` TEXT, `zip` TEXT, `email` TEXT, `cellPhone` TEXT, `maritalStatus` TEXT, `maritalStatusOther` TEXT, `medicalHistory` TEXT NOT NULL, `medicalHistoryOthers` TEXT, `recentSurgeriesOrHospitalization` TEXT, `currentMedication` TEXT, `height` REAL, `weight` REAL, `bpSystolic` INTEGER, `bpDiastolic` INTEGER, `pulseRate` INTEGER, `respiratoryRate` INTEGER, `temperature` REAL, `oxygenSaturation` REAL, `bloodGlucose` REAL, `symptoms` TEXT NOT NULL, `everDiagnosedTB` TEXT, `diagnosisYear` TEXT, `everReceivedTreatment` TEXT, `treatmentCompleted` TEXT, `closeContactActiveTB` TEXT, `closeContactWhen` TEXT, `householdMemberTBTreatment` TEXT, `smokingStatus` TEXT, `smokingDuration` TEXT, `drinksAlcohol` INTEGER, `alcoholAmount` TEXT, `dustSmokeChemicalExposure` INTEGER, `cooksWithSolidFuels` INTEGER, `secondhandSmokeExposure` INTEGER, `crowdedLivingConditions` INTEGER, PRIMARY KEY(`recordId`))",
         "fields": [
           {
             "fieldPath": "recordId",
@@ -125,6 +125,12 @@
           {
             "fieldPath": "maritalStatus",
             "columnName": "maritalStatus",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "maritalStatusOther",
+            "columnName": "maritalStatusOther",
             "affinity": "TEXT",
             "notNull": false
           },
@@ -360,7 +366,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'fa2e1e341d90ab5cc951f2d5094207ee')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd105d342a15ec8039f8554648dc83bf8')"
     ]
   }
 }

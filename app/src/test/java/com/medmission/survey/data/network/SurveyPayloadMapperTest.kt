@@ -61,7 +61,8 @@ class SurveyPayloadMapperTest {
             zip = "1000",
             email = "juan@example.com",
             cellPhone = "+63-900-000-0000",
-            maritalStatus = MaritalStatus.MARRIED,
+            maritalStatus = MaritalStatus.OTHER,
+            maritalStatusOther = "Domestic partnership",
             medicalHistory = setOf(MedicalHistoryItem.ASTHMA, MedicalHistoryItem.DIABETES),
             medicalHistoryOthers = "Migraine",
             recentSurgeriesOrHospitalization = "Appendectomy 2019",
@@ -120,7 +121,8 @@ class SurveyPayloadMapperTest {
         assertEquals("1980-03-04", patient.getValue("birthDate").jsonPrimitive.content)
         assertEquals("MALE", patient.getValue("gender").jsonPrimitive.content)
         assertEquals(46, patient.getValue("age").jsonPrimitive.int)
-        assertEquals("MARRIED", patient.getValue("maritalStatus").jsonPrimitive.content)
+        assertEquals("OTHER", patient.getValue("maritalStatus").jsonPrimitive.content)
+        assertEquals("Domestic partnership", patient.getValue("maritalStatusOther").jsonPrimitive.content)
 
         val medicalHistory = root.getValue("medicalHistory").jsonObject
         assertEquals(

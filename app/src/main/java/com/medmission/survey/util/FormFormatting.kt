@@ -37,6 +37,8 @@ fun formatCellPhoneInput(input: String): String = maskDigitsWithDashes(input, li
 
 fun formatZipInput(input: String): String = input.filter { it.isDigit() }.take(4)
 
+fun formatYearInput(input: String): String = input.filter { it.isDigit() }.take(4)
+
 fun filterVitalSignInput(input: String): String = input.filter { it.isDigit() || it == '.' }
 
 /** Full years between an ISO "yyyy-MM-dd" birth date and [today]. Null if unparseable or future. */

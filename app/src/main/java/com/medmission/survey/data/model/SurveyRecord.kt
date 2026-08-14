@@ -28,6 +28,7 @@ data class SurveyRecord(
     val email: String? = null,
     val cellPhone: String? = null,
     val maritalStatus: MaritalStatus? = null,
+    val maritalStatusOther: String? = null,
 
     val medicalHistory: Set<MedicalHistoryItem> = emptySet(),
     val medicalHistoryOthers: String? = null,

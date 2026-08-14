@@ -31,6 +31,7 @@ data class PatientDto(
     val email: String? = null,
     val cellPhone: String? = null,
     val maritalStatus: String? = null,
+    val maritalStatusOther: String? = null,
 )
 
 @Serializable
