@@ -213,16 +213,12 @@ fun FormScreen(
                         }
                     },
                     onFreeText = { text ->
-                        // Mirrors onSelect's cascade-reset above, gated the same way ("Not
-                        // listed" is a pick too — a stale downstream selection from whatever
-                        // was previously chosen here must not survive a new region pick).
-                        val wasEmpty = record.region == null
+                        // Mirrors onSelect's cascade-reset above, unconditionally — "Not
+                        // listed" is a pick too, and a stale downstream selection from
+                        // whatever was previously chosen here must not survive a new
+                        // region pick, whether this is the first fill or a re-edit.
                         onFieldChange {
-                            if (wasEmpty) {
-                                it.copy(region = text, province = null, city = null, barangay = null, zip = null)
-                            } else {
-                                it.copy(region = text)
-                            }
+                            it.copy(region = text, province = null, city = null, barangay = null, zip = null)
                         }
                         activeGeoDialog = null
                     },
@@ -240,13 +236,8 @@ fun FormScreen(
                         activeGeoDialog = if (wasEmpty) GeoDialogStep.CITY else null
                     },
                     onFreeText = { text ->
-                        val wasEmpty = record.province == null
                         onFieldChange {
-                            if (wasEmpty) {
-                                it.copy(province = text, city = null, barangay = null, zip = null)
-                            } else {
-                                it.copy(province = text)
-                            }
+                            it.copy(province = text, city = null, barangay = null, zip = null)
                         }
                         activeGeoDialog = null
                     },
@@ -266,13 +257,8 @@ fun FormScreen(
                         activeGeoDialog = if (wasEmpty) GeoDialogStep.BARANGAY else null
                     },
                     onFreeText = { text ->
-                        val wasEmpty = record.city == null
                         onFieldChange {
-                            if (wasEmpty) {
-                                it.copy(city = text, barangay = null, zip = null)
-                            } else {
-                                it.copy(city = text)
-                            }
+                            it.copy(city = text, barangay = null, zip = null)
                         }
                         activeGeoDialog = null
                     },
