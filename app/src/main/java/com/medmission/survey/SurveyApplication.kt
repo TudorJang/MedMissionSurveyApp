@@ -12,6 +12,7 @@ import com.medmission.survey.data.local.AppDatabase
 import com.medmission.survey.data.network.AndroidNsdDiscoveryService
 import com.medmission.survey.data.network.NsdDiscoveryService
 import com.medmission.survey.data.network.OkHttpSurveyApiClient
+import com.medmission.survey.data.psgc.PsgcRepository
 import com.medmission.survey.data.repository.LaptopEndpointRepository
 import com.medmission.survey.data.repository.SurveyRepository
 import com.medmission.survey.util.devicePrefixFrom
@@ -44,6 +45,10 @@ class SurveyApplication : Application(), Configuration.Provider {
 
     val nsdDiscoveryService: NsdDiscoveryService by lazy {
         AndroidNsdDiscoveryService(this)
+    }
+
+    val psgcRepository: PsgcRepository by lazy {
+        PsgcRepository(this)
     }
 
     // Distinguishes this tablet's records from every other tablet's in the "No." field —
