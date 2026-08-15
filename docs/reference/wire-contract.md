@@ -122,11 +122,11 @@ Every field is optional; the app never blocks send on a missing value.
 |---|---|
 | `recordId` | String (UUID), always present |
 | `no` | String |
-| `date` | String — see §6 |
+| `date` | String — ISO-8601 `YYYY-MM-DD`, machine-generated, always valid (see §6) |
 | `patient.firstName`, `.lastName`, `.city`, `.zip`, `.email`, `.cellPhone` | String |
 | `patient.address` | String — as of the PSGC address hierarchy feature, holds only street/subdivision/landmark text, not a full address. The complete address is `address` + `barangay` + `city` + `province` + `region` combined; this field previously held the complete free-text address. |
 | `patient.region`, `.province`, `.barangay` | String — PSA official name from the bundled PSGC dataset, or an arbitrary free-text string if "Not listed" was chosen on the tablet. `.province` is absent for addresses in NCR (no province level exists there). |
-| `patient.birthDate` | String — see §6 |
+| `patient.birthDate` | String — ISO-8601 `YYYY-MM-DD` shape; may be partial or invalid, parse-or-ignore (see §6) |
 | `patient.age` | Int |
 | `patient.gender`, `.maritalStatus` | String enum — see §5 |
 | `patient.maritalStatusOther` | String — only meaningful when `maritalStatus` is `OTHER`; the app clears it whenever `maritalStatus` changes away from `OTHER` |
@@ -240,19 +240,21 @@ Kotlin identifiers, so they were renamed as shown above. **The wire values are t
 names in the "Wire value" column, not the spec names.** Bridge-side code must match on
 `FIVE_TO_10`, `ONE_TO_TWO`, `THREE_TO_FOUR`, `FIVE_PLUS`.
 
-## 6. Open question: date formats
+## 6. Date formats
 
-`date` and `patient.birthDate` are **unformatted `String?`** in the app today. The design
-spec types them as `LocalDate?`, but the current implementation stores and transmits
-whatever string the field holds, with no parsing, validation or canonical format.
+**The wire format for `date` and `patient.birthDate` is ISO-8601 calendar date,
+`YYYY-MM-DD`.** This formalizes what the app already produces:
 
-The samples above use ISO-8601 (`YYYY-MM-DD`) for readability only — **that is not a
-decision this document makes and nothing in the app enforces it.**
+- `date` is machine-generated on record creation (`LocalDate.now().toString()`,
+  `todayLocalDateString` in `FormFormatting.kt`) and is always a valid ISO date.
+- `patient.birthDate` comes from a masked input (`formatBirthDateInput`) that only
+  admits digits laid out as `YYYY-MM-DD`. The mask enforces the **shape**, not
+  calendar validity: because the form never blocks send, the value can be a partial
+  entry (`"1980-03"`) or a non-existent date (`"1980-13-99"`). The app's own age
+  calculation treats unparseable values as absent; bridges must do the same —
+  parse as ISO-8601, and treat anything that fails to parse as "not answered"
+  rather than rejecting the payload.
 
-Picking the format is a genuine design choice for the bridge integration, because it is
-driven by what DICOM MWL needs (DICOM `DA` VR is `YYYYMMDD`) and by how the tablet's date
-input is eventually built. Whoever specs the bridge integration should decide, then the
-app side should conform and this section should be replaced with the decision.
-
-Until then, bridge implementations must not assume a format, and the tablet must not be
-assumed to emit a valid date at all.
+**DICOM conversion is the bridge's job.** DICOM `DA` VR wants `YYYYMMDD`; the bridge
+strips the hyphens after successful ISO parsing. The tablet will not emit DICOM
+formats.
