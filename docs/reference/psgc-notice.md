@@ -47,3 +47,24 @@ present under the older region names, so nothing is unreachable — but a
 refresh should re-run the Task 1 verification greps and the
 `PsgcRepositoryTest` suite, which asserts against real dataset content
 (region count, Taytay ZIP precedence) and will catch shape changes.
+
+**Refresh attempt, 2026-08-15 — no viable source yet.** Findings, so the
+next attempt doesn't repeat the survey:
+
+- The pinned upstream (`xemasiv/psgc2` `tree.json`) is byte-identical to
+  the bundled file (SHA-256 verified) — re-downloading is a no-op.
+- `psgc.gitlab.io` (community PSGC API) has the BARMM rename but still
+  lists 17 regions with no Negros Island Region, uses a different naming
+  style ("Ilocos Region" vs. the PSA official "REGION I (ILOCOS REGION)"
+  this app records), and is a flat code-keyed API — adopting it means a
+  format converter plus a wire-visible change to every region string.
+- `flores-jacob/philippine-regions-…-barangays` tops out at a 2019
+  dataset. No surveyed community JSON source carries NIR (June 2024) yet.
+- The authoritative path is the PSA's quarterly PSGC publication (Excel)
+  at psa.gov.ph, converted into this app's `tree.json` shape (`class` key
+  on city/municipality nodes, `subMunicipality` on Manila barangays).
+  That is a small standalone project — converter script, full-count
+  verification against PSA's published totals, region-count test update
+  (17 → 18), and a check that ZIP name-matching still behaves — not a
+  drop-in refresh. psa.gov.ph was unreachable from the development
+  network at the time of this attempt.
