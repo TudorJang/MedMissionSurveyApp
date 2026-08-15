@@ -71,6 +71,12 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 
     testImplementation("junit:junit:4.13.2")
+    // Compose UI tests run locally on Robolectric (no emulator needed):
+    // isIncludeAndroidResources above provides the resources, ui-test-manifest
+    // the host activity, and createComposeRule works under RobolectricTestRunner.
+    testImplementation(platform("androidx.compose:compose-bom:2024.06.00"))
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     testImplementation("androidx.room:room-testing:2.6.1")
     testImplementation("androidx.work:work-testing:2.9.1")
