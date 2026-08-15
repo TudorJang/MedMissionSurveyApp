@@ -1,8 +1,18 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
+}
+
+// Release signing loads from an untracked keystore.properties at the repo root.
+// When the file is absent (CI, another machine), the release build stays unsigned
+// rather than failing — only the packaging machine holds the keys.
+val keystoreProperties = Properties().apply {
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
 }
 
 android {
@@ -41,6 +51,29 @@ android {
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
+    }
+
+    signingConfigs {
+        if (keystoreProperties.isNotEmpty()) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // Minification stays off for the pilot: kotlinx.serialization and Room
+            // are reflection-adjacent, and an untested ProGuard config is a worse
+            // field risk than a larger APK.
+            isMinifyEnabled = false
+            if (keystoreProperties.isNotEmpty()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
     }
 }
 
