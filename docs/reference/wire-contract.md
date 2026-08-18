@@ -122,7 +122,7 @@ markers only. They are not in the data model and never appear in this payload.
 }
 ```
 
-**Note on sample `"region"` value:** The sample above shows `"region": "NCR"` for readability, but this is a short illustrative label only. The actual wire value the app sends is the PSA official region name from the bundled `hierarchy.json` dataset — e.g. `"NATIONAL CAPITAL REGION (NCR)"`, not the short form `"NCR"`. The §4 field-type table and the test fixture reflect the actual values that appear on the wire.
+**Note on sample `"region"` value:** The sample above shows `"region": "NCR"` for readability, but this is a short illustrative label only. The actual wire value the app sends is the PSA official region name from the bundled `hierarchy.json` dataset — e.g. `"National Capital Region (NCR)"`, not the short form `"NCR"`. The §4 field-type table and the test fixture reflect the actual values that appear on the wire.
 
 ## 4. Field types
 

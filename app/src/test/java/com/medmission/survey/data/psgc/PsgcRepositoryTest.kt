@@ -12,8 +12,23 @@ class PsgcRepositoryTest {
     private val repository = PsgcRepository(ApplicationProvider.getApplicationContext())
 
     @Test
-    fun `lists all 17 regions from the bundled dataset`() {
-        assertEquals(17, repository.regions().size)
+    fun `lists all 18 regions from the bundled dataset`() {
+        assertEquals(18, repository.regions().size)
+    }
+
+    @Test
+    fun `the Negros Island Region re-established in 2024 is present`() {
+        val nir = repository.regions().first { it.contains("Negros Island Region") }
+        assertTrue(repository.provinces(nir).contains("Negros Occidental"))
+    }
+
+    @Test
+    fun `a highly urbanised city is listed under the province it sits in`() {
+        // PSA codes Bacolod, Baguio, Cebu and the rest at the province slot because
+        // they answer to no province. Someone picking an address still looks for them
+        // under the province they are in, so the dataset nests them there.
+        val nir = repository.regions().first { it.contains("Negros Island Region") }
+        assertTrue(repository.cities(nir, "Negros Occidental").contains("City of Bacolod"))
     }
 
     @Test
@@ -24,7 +39,7 @@ class PsgcRepositoryTest {
 
     @Test
     fun `NCR has no provinces`() {
-        val ncr = repository.regions().first { it.contains("NATIONAL CAPITAL REGION") }
+        val ncr = repository.regions().first { it.contains("National Capital Region") }
         assertTrue(repository.provinces(ncr).isEmpty())
     }
 

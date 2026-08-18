@@ -1,10 +1,14 @@
 # Geographic data attribution
 
 The Region/Province/City/Municipality/Barangay hierarchy bundled in
-`app/src/main/assets/psgc/hierarchy.json` is derived from the official
-Philippine Standard Geographic Code (PSGC), published by the Philippine
-Statistics Authority (PSA), via https://github.com/xemasiv/psgc2
-(Creative Commons Attribution 4.0 International).
+`app/src/main/assets/psgc/hierarchy.json` is the official Philippine
+Standard Geographic Code (PSGC), published by the Philippine Statistics
+Authority (PSA), **2nd Quarter 2026 release**. It is built by
+`tools/psgc/build_hierarchy.py` from the release tables carried in the
+CRAN package `psgc` (https://github.com/yng-me/psgc, MIT), which is where
+PSA's quarterly publication can actually be fetched — see "Refreshing the
+datasets" below. Earlier releases of this file came from
+https://github.com/xemasiv/psgc2 (CC BY 4.0), a 2019-era snapshot.
 
 Geographic data © Philippine Statistics Authority (PSA), licensed
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
@@ -38,33 +42,45 @@ an operator can fill these in by hand:
 
 ## Refreshing the datasets
 
-Both files were downloaded as-is from the repositories above (see the
-plan document `docs/superpowers/plans/2026-08-14-philippine-address-hierarchy.md`,
-Task 1, for the exact URLs). The bundled PSGC snapshot predates 2019: it
-still names ARMM (renamed BARMM in 2019) and lacks the re-established
-Negros Island Region (2024). All provinces, cities and barangays are
-present under the older region names, so nothing is unreachable — but a
-refresh should re-run the Task 1 verification greps and the
-`PsgcRepositoryTest` suite, which asserts against real dataset content
-(region count, Taytay ZIP precedence) and will catch shape changes.
+PSA publishes the PSGC quarterly. To move to a newer release:
 
-**Refresh attempt, 2026-08-15 — no viable source yet.** Findings, so the
-next attempt doesn't repeat the survey:
+    pip install rdata
+    curl -L -o sysdata.rda https://raw.githubusercontent.com/yng-me/psgc/main/R/sysdata.rda
+    python tools/psgc/build_hierarchy.py sysdata.rda --release Q3_2026 \
+        --out app/src/main/assets/psgc/hierarchy.json
 
-- The pinned upstream (`xemasiv/psgc2` `tree.json`) is byte-identical to
-  the bundled file (SHA-256 verified) — re-downloading is a no-op.
-- `psgc.gitlab.io` (community PSGC API) has the BARMM rename but still
-  lists 17 regions with no Negros Island Region, uses a different naming
-  style ("Ilocos Region" vs. the PSA official "REGION I (ILOCOS REGION)"
-  this app records), and is a flat code-keyed API — adopting it means a
-  format converter plus a wire-visible change to every region string.
-- `flores-jacob/philippine-regions-…-barangays` tops out at a 2019
-  dataset. No surveyed community JSON source carries NIR (June 2024) yet.
-- The authoritative path is the PSA's quarterly PSGC publication (Excel)
-  at psa.gov.ph, converted into this app's `tree.json` shape (`class` key
-  on city/municipality nodes, `subMunicipality` on Manila barangays).
-  That is a small standalone project — converter script, full-count
-  verification against PSA's published totals, region-count test update
-  (17 → 18), and a check that ZIP name-matching still behaves — not a
-  drop-in refresh. psa.gov.ph was unreachable from the development
-  network at the time of this attempt.
+Then run `PsgcRepositoryTest`, which asserts against real dataset content
+(region count, NIR, a highly urbanised city's placement, Taytay's ZIP) and
+will catch shape changes. The converter itself refuses to write a tree in
+which one region holds both provinces and cities, because the app's parser
+decides between the two per region and the province list would silently
+vanish in the picker.
+
+**Why not psa.gov.ph directly.** The authoritative Excel publication is at
+psa.gov.ph, but that host answers every non-browser request with HTTP 403 —
+tried with and without a browser user agent, from two clients. The CRAN
+package above carries the same PSA tables (area names, geographic levels
+including Sub-Municipality, and 2015/2020/2024 census populations) for every
+release since Q1 2023, which is why the converter reads it instead. If PSA
+ever becomes reachable, converting its Excel into the same shape is the
+better source.
+
+**What the 2026-08-18 refresh changed** (from the 2019-era snapshot):
+
+- 17 regions -> 18: BARMM replaces ARMM, and the Negros Island Region
+  (re-established 2024) appears with Negros Occidental, Negros Oriental and
+  Siquijor moved into it.
+- 42,044 -> 42,010 barangays, 1,634 -> 1,642 cities and municipalities,
+  81 -> 84 province-level nodes. The two extra province-level nodes are
+  PSA's own: the BARMM "Special Geographic Area" and "City of Isabela (Not
+  a Province)", both of which hold municipalities and would otherwise have
+  to sit beside provinces under their region.
+- Names lose the parenthetical aliases and gain PSA's current spelling
+  ("Anini Y" -> "Anini-Y", "Alabel (Capital)" -> "Alabel", "City Of Manila"
+  -> "City of Manila"). Region names are now title case as PSA writes them
+  ("National Capital Region (NCR)", not "NATIONAL CAPITAL REGION (NCR)") —
+  visible on the wire, see `wire-contract.md`.
+- ZIP matching improved on its own as a result, measured against the same
+  `zipcodes.json`: cities resolving a ZIP went from 1,202/1,634 (73%) to
+  1,265/1,642 (77%), barangays from 6,288 (14%) to 7,105 (16%). The Manila
+  and Caloocan gaps described above are unchanged.
