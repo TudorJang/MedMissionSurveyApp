@@ -44,6 +44,19 @@ class SurveyApiClientTest {
     }
 
     @Test
+    fun `a rejected api key comes back as UnauthorizedException, not a generic failure`() = runTest {
+        // The tablet has to tell "wrong key, ask the operator" apart from "laptop is
+        // asleep, try again later": retrying a rejected key just burns attempts until
+        // the record lands in FAILED with nothing to show for it.
+        server.enqueue(MockResponse().setResponseCode(401))
+        val baseUrl = server.url("/").toString().trimEnd('/')
+
+        val result = client.sendSurvey(baseUrl, "wrong-key", samplePayload)
+
+        assertTrue(result.exceptionOrNull() is UnauthorizedException)
+    }
+
+    @Test
     fun `returns failure for a non-2xx response`() = runTest {
         server.enqueue(MockResponse().setResponseCode(500))
         val baseUrl = server.url("/").toString().trimEnd('/')

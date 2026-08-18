@@ -6,6 +6,7 @@ import com.medmission.survey.data.model.SurveyRecord
 import com.medmission.survey.data.model.SyncStatus
 import com.medmission.survey.data.network.SurveyApiClient
 import com.medmission.survey.data.network.SurveyPayloadMapper
+import com.medmission.survey.data.network.UnauthorizedException
 import kotlinx.coroutines.flow.Flow
 import java.io.IOException
 
@@ -13,6 +14,7 @@ class SurveyRepository(
     private val surveyDao: SurveyDao,
     private val apiClient: SurveyApiClient,
     private val laptopEndpointDao: LaptopEndpointDao,
+    /** Fallback for endpoints saved without one; set at build time with -PsurveyApiKey. */
     private val apiKey: String,
 ) {
     suspend fun saveDraft(record: SurveyRecord) {
@@ -45,7 +47,9 @@ class SurveyRepository(
 
         val payload = SurveyPayloadMapper.toDto(record)
         val baseUrl = "http://${endpoint.host}:${endpoint.port}"
-        val result = apiClient.sendSurvey(baseUrl, apiKey, payload)
+        // Each bridge generates its own key, so the endpoint's key wins; the
+        // build-time one only covers endpoints saved before a key was entered.
+        val result = apiClient.sendSurvey(baseUrl, endpoint.apiKey.ifBlank { apiKey }, payload)
 
         return if (result.isSuccess) {
             surveyDao.upsert(
@@ -57,8 +61,27 @@ class SurveyRepository(
             )
             Result.success(Unit)
         } else {
-            recordFailedAttempt(record, laptopId, result.exceptionOrNull() ?: IOException("Unknown send error"))
+            val cause = result.exceptionOrNull() ?: IOException("Unknown send error")
+            // A rejected key cannot come good on its own. Retrying it ten times only
+            // delays the moment someone notices and fixes the key on this laptop.
+            if (cause is UnauthorizedException) recordRejectedKey(record, laptopId, cause)
+            else recordFailedAttempt(record, laptopId, cause)
         }
+    }
+
+    private suspend fun recordRejectedKey(
+        record: SurveyRecord,
+        laptopId: String,
+        cause: Throwable,
+    ): Result<Unit> {
+        surveyDao.upsert(
+            record.copy(
+                status = SyncStatus.FAILED,
+                sendAttempts = record.sendAttempts + 1,
+                targetLaptopId = laptopId,
+            )
+        )
+        return Result.failure(cause)
     }
 
     private suspend fun recordFailedAttempt(

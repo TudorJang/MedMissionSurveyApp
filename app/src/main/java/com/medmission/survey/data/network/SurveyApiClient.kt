@@ -9,6 +9,12 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
+/**
+ * The bridge rejected the key. Unlike a timeout or a sleeping laptop this never fixes
+ * itself, so callers must stop retrying and get a person to correct the key.
+ */
+class UnauthorizedException(message: String) : IOException(message)
+
 interface SurveyApiClient {
     suspend fun sendSurvey(baseUrl: String, apiKey: String, payload: SurveyPayloadDto): Result<Unit>
 }
@@ -28,8 +34,11 @@ class OkHttpSurveyApiClient(
                     .post(body)
                     .build()
                 client.newCall(request).execute().use { response ->
-                    if (response.isSuccessful) Result.success(Unit)
-                    else Result.failure(IOException("HTTP ${response.code}"))
+                    when {
+                        response.isSuccessful -> Result.success(Unit)
+                        response.code == 401 -> Result.failure(UnauthorizedException("HTTP 401"))
+                        else -> Result.failure(IOException("HTTP ${response.code}"))
+                    }
                 }
             } catch (e: IOException) {
                 Result.failure(e)

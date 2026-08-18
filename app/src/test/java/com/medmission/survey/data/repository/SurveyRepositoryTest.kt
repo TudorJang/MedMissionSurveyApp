@@ -6,6 +6,7 @@ import com.medmission.survey.data.model.LaptopEndpoint
 import com.medmission.survey.data.model.SurveyRecord
 import com.medmission.survey.data.model.SyncStatus
 import com.medmission.survey.data.network.SurveyApiClient
+import com.medmission.survey.data.network.UnauthorizedException
 import com.medmission.survey.data.network.SurveyPayloadDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -34,8 +35,10 @@ private class FakeLaptopEndpointDao : LaptopEndpointDao {
 
 private class FakeSurveyApiClient(private val result: Result<Unit>) : SurveyApiClient {
     var lastCallBaseUrl: String? = null
+    var lastCallApiKey: String? = null
     override suspend fun sendSurvey(baseUrl: String, apiKey: String, payload: SurveyPayloadDto): Result<Unit> {
         lastCallBaseUrl = baseUrl
+        lastCallApiKey = apiKey
         return result
     }
 }
@@ -51,6 +54,56 @@ private class FailsOnceThenSucceedsApiClient : SurveyApiClient {
 
 class SurveyRepositoryTest {
     private val laptop = LaptopEndpoint(id = "laptop-1", name = "1번 X-ray실", host = "192.168.1.10", port = 8080)
+
+    @Test
+    fun `sends the key stored on the endpoint`() = runTest {
+        // Each bridge generates its own key, so the key belongs to the laptop, not
+        // to the app: two laptops at one site do not share one.
+        val surveyDao = FakeSurveyDao()
+        val endpoint = laptop.copy(apiKey = "C79QS-CQ8RM-5QRWU-ABDEE")
+        val endpointDao = FakeLaptopEndpointDao().apply { endpoints[endpoint.id] = endpoint }
+        val record = SurveyRecord(firstName = "Ana")
+        surveyDao.records[record.recordId] = record
+        val api = FakeSurveyApiClient(Result.success(Unit))
+
+        SurveyRepository(surveyDao, api, endpointDao, "built-in-key")
+            .sendToLaptop(record.recordId, endpoint.id)
+
+        assertEquals("C79QS-CQ8RM-5QRWU-ABDEE", api.lastCallApiKey)
+    }
+
+    @Test
+    fun `falls back to the build-time key when the endpoint has none`() = runTest {
+        // Endpoints saved before per-laptop keys existed, and sites that build the
+        // APK with their own key, both land here.
+        val surveyDao = FakeSurveyDao()
+        val endpointDao = FakeLaptopEndpointDao().apply { endpoints[laptop.id] = laptop }
+        val record = SurveyRecord(firstName = "Ana")
+        surveyDao.records[record.recordId] = record
+        val api = FakeSurveyApiClient(Result.success(Unit))
+
+        SurveyRepository(surveyDao, api, endpointDao, "built-in-key")
+            .sendToLaptop(record.recordId, laptop.id)
+
+        assertEquals("built-in-key", api.lastCallApiKey)
+    }
+
+    @Test
+    fun `a rejected key fails the record at once instead of retrying for hours`() = runTest {
+        val surveyDao = FakeSurveyDao()
+        val endpointDao = FakeLaptopEndpointDao().apply { endpoints[laptop.id] = laptop }
+        val record = SurveyRecord(firstName = "Ana")
+        surveyDao.records[record.recordId] = record
+        val api = FakeSurveyApiClient(Result.failure(UnauthorizedException("HTTP 401")))
+
+        val result = SurveyRepository(surveyDao, api, endpointDao, "wrong-key")
+            .sendToLaptop(record.recordId, laptop.id)
+
+        assertTrue(result.isFailure)
+        // Nothing about the key changes on its own, so the ten retries would all fail
+        // the same way; FAILED is what surfaces it to the person holding the tablet.
+        assertEquals(SyncStatus.FAILED, surveyDao.records[record.recordId]!!.status)
+    }
 
     @Test
     fun `sendToLaptop marks record SENT and records sentAt on success`() = runTest {

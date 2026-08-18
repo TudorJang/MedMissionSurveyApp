@@ -12,11 +12,21 @@ wire value, and the exact serialization of an empty record.
 ```
 POST http://{bridge_host}:{bridge_port}/api/v1/surveys
 Content-Type: application/json
-X-Api-Key: {pre-shared fixed key}
+X-Api-Key: {the key for this bridge}
 ```
 
-Any 2xx response is treated as success. Any non-2xx, connection failure or timeout leaves
-the record `PENDING` on the tablet for automatic retry. Connect timeout 5s, read timeout 10s.
+**The key belongs to the laptop, not to the app.** Each bridge generates its own key on
+first run, so it is stored per saved endpoint and entered on the laptop-select screen
+(the operator reads it off the bridge's management page). An endpoint with a blank key
+falls back to the key compiled into the APK (`-PsurveyApiKey`, default `changeme-dev-key`),
+which is what a site building its own APK relies on.
+
+A `401` is not retried: unlike a timeout it never comes good on its own, so the record
+goes straight to `FAILED` and the user is told the key was rejected.
+
+Any 2xx response is treated as success. Any non-2xx other than `401`, connection failure
+or timeout leaves the record `PENDING` on the tablet for automatic retry. Connect timeout
+5s, read timeout 10s.
 
 **Idempotency.** The bridge MUST upsert on `recordId`. The tablet re-sends the identical
 `recordId` on every retry (up to 10 attempts) and also re-sends after a user edits an

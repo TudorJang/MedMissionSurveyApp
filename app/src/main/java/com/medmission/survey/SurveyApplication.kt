@@ -28,7 +28,9 @@ import java.util.concurrent.TimeUnit
 class SurveyApplication : Application(), Configuration.Provider {
 
     private val database by lazy {
-        Room.databaseBuilder(this, AppDatabase::class.java, "medmission-survey.db").build()
+        Room.databaseBuilder(this, AppDatabase::class.java, "medmission-survey.db")
+            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .build()
     }
 
     private val apiClient by lazy {

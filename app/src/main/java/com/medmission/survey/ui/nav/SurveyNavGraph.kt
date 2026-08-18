@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import com.medmission.survey.data.network.UnauthorizedException
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -95,14 +96,23 @@ fun SurveyNavGraph(navController: NavHostController = rememberNavController()) {
                         val result = viewModel.send(laptopId)
                         // On failure the record stays PENDING and SurveyRetryWorker will
                         // pick it up, so we still return Home — but the user gets told.
-                        val message =
-                            if (result.isSuccess) "Sent" else "Send failed — will retry automatically"
+                        // A rejected key never comes good on its own, so promising a
+                        // retry would be a lie and the record is already FAILED.
+                        val message = when {
+                            result.isSuccess -> "Sent"
+                            result.exceptionOrNull() is UnauthorizedException ->
+                                "Laptop rejected the API key — check it on this laptop's page"
+                            else -> "Send failed — will retry automatically"
+                        }
                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                         navController.popBackStack("home", inclusive = false)
                     }
                 },
-                onAddManual = { name, host, port ->
-                    scope.launch { viewModel.addManualEndpoint(name, host, port) }
+                onAddManual = { name, host, port, apiKey ->
+                    scope.launch { viewModel.addManualEndpoint(name, host, port, apiKey) }
+                },
+                onApiKeyChange = { laptopId, apiKey ->
+                    scope.launch { viewModel.updateApiKey(laptopId, apiKey) }
                 },
             )
         }

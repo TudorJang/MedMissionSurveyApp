@@ -25,9 +25,20 @@ class LaptopSelectViewModel(
     val discovered: StateFlow<List<DiscoveredLaptop>> = nsdDiscoveryService.discover()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    suspend fun addManualEndpoint(name: String, host: String, port: Int) {
-        laptopEndpointRepository.save(LaptopEndpoint(id = UUID.randomUUID().toString(), name = name, host = host, port = port))
+    suspend fun addManualEndpoint(name: String, host: String, port: Int, apiKey: String = "") {
+        laptopEndpointRepository.save(
+            LaptopEndpoint(
+                id = UUID.randomUUID().toString(),
+                name = name,
+                host = host,
+                port = port,
+                apiKey = apiKey.trim(),
+            )
+        )
     }
+
+    suspend fun updateApiKey(laptopId: String, apiKey: String) =
+        laptopEndpointRepository.updateApiKey(laptopId, apiKey)
 
     suspend fun send(laptopId: String): Result<Unit> = surveyRepository.sendToLaptop(recordId, laptopId)
 }

@@ -10,5 +10,7 @@ data class LaptopEndpoint(
     val name: String = "",
     val host: String = "",
     val port: Int = 0,
+    /** Blank falls back to the key built into the APK — see SurveyRepository. */
+    val apiKey: String = "",
     val lastSuccessAt: Long? = null,
 )
