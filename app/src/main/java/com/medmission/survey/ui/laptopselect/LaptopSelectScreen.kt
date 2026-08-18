@@ -83,8 +83,9 @@ fun LaptopSelectScreen(
 
 /**
  * Each bridge generates its own key on first run, so the key belongs to the laptop and
- * is entered here rather than built into the app. Blank keeps the key compiled into the
- * APK, which is what a site that builds its own APK relies on.
+ * is entered here rather than built into the app. Blank falls back to the key compiled
+ * into the APK, which only a site that built its own APK around one shared key can rely
+ * on — for everyone else a blank field means a rejected send, and the field says so.
  */
 @Composable
 private fun ApiKeyField(endpoint: LaptopEndpoint, onSave: (String) -> Unit) {
@@ -98,7 +99,8 @@ private fun ApiKeyField(endpoint: LaptopEndpoint, onSave: (String) -> Unit) {
         placeholder = { Text("shown on the laptop page") },
         supportingText = {
             Text(
-                if (endpoint.apiKey.isBlank()) "Blank — using the key built into this app"
+                if (endpoint.apiKey.isBlank())
+                    "Blank — the laptop refuses this unless this app was built with its key"
                 else "Case-sensitive, exactly as shown on the laptop",
                 style = MaterialTheme.typography.bodySmall,
             )
