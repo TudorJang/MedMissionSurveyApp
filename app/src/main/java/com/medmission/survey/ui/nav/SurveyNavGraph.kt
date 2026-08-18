@@ -40,6 +40,9 @@ fun SurveyNavGraph(navController: NavHostController = rememberNavController()) {
                 records = records,
                 onNewSurvey = { navController.navigate("form") },
                 onRecordClick = { recordId -> navController.navigate("form?recordId=$recordId") },
+                // Straight back to laptop selection: that screen already holds the key
+                // field, which is what the operator had to fix before trying again.
+                onResend = { recordId -> navController.navigate("laptopSelect/$recordId") },
             )
         }
         composable(

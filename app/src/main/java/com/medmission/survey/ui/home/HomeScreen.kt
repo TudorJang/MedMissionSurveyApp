@@ -35,6 +35,7 @@ fun HomeScreen(
     records: List<SurveyRecord>,
     onNewSurvey: () -> Unit,
     onRecordClick: (String) -> Unit,
+    onResend: (String) -> Unit,
 ) {
     Scaffold { padding ->
         Column(Modifier.fillMaxSize().padding(padding), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -50,13 +51,19 @@ fun HomeScreen(
                         Column(Modifier.padding(12.dp)) {
                             Text(record.no ?: record.recordId.take(8))
                             Text("${record.firstName.orEmpty()} ${record.lastName.orEmpty()}")
-                            // TODO: FAILED records have no manual "resend" flow yet —
-                            // that needs a laptop re-selection step; tracked as follow-up.
                             Text(
                                 text = record.status.name,
                                 color = statusColor(record.status),
                                 fontWeight = FontWeight.Bold,
                             )
+                            // The retry worker deliberately gives up on a rejected key,
+                            // so a failed record only moves again when the operator asks
+                            // for it — after fixing the key on the laptop page.
+                            if (record.status == SyncStatus.FAILED) {
+                                Button(onClick = { onResend(record.recordId) }) {
+                                    Text("Send again")
+                                }
+                            }
                         }
                     }
                 }
