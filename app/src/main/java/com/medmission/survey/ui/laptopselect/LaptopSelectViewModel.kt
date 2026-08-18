@@ -10,7 +10,6 @@ import com.medmission.survey.data.repository.SurveyRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
-import java.util.UUID
 
 class LaptopSelectViewModel(
     private val laptopEndpointRepository: LaptopEndpointRepository,
@@ -26,15 +25,7 @@ class LaptopSelectViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     suspend fun addManualEndpoint(name: String, host: String, port: Int, apiKey: String = "") {
-        laptopEndpointRepository.save(
-            LaptopEndpoint(
-                id = UUID.randomUUID().toString(),
-                name = name,
-                host = host,
-                port = port,
-                apiKey = apiKey.trim(),
-            )
-        )
+        laptopEndpointRepository.addOrUpdate(name, host, port, apiKey)
     }
 
     suspend fun updateApiKey(laptopId: String, apiKey: String) =

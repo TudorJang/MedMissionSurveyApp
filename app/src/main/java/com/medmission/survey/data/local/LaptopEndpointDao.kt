@@ -14,6 +14,9 @@ interface LaptopEndpointDao {
     @Query("SELECT * FROM laptop_endpoints WHERE id = :id")
     suspend fun getById(id: String): LaptopEndpoint?
 
+    @Query("SELECT * FROM laptop_endpoints WHERE host = :host AND port = :port")
+    suspend fun getByAddress(host: String, port: Int): LaptopEndpoint?
+
     @Query("SELECT * FROM laptop_endpoints ORDER BY name ASC")
     fun observeAll(): Flow<List<LaptopEndpoint>>
 }

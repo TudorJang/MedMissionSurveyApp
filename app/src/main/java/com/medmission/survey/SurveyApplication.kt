@@ -29,7 +29,7 @@ class SurveyApplication : Application(), Configuration.Provider {
 
     private val database by lazy {
         Room.databaseBuilder(this, AppDatabase::class.java, "medmission-survey.db")
-            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
             .build()
     }
 

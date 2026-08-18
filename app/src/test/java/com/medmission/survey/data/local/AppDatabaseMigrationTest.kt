@@ -31,7 +31,7 @@ class AppDatabaseMigrationTest {
         createVersion1Database(dbFile)
 
         val db = Room.databaseBuilder(context, AppDatabase::class.java, dbFile.absolutePath)
-            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
             .allowMainThreadQueries()
             .build()
 
@@ -48,6 +48,44 @@ class AppDatabaseMigrationTest {
 
                 val survey = db.surveyDao().getById("record-1")
                 assertEquals("Ana", survey?.firstName)
+            }
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun `collapsing duplicate laptops keeps the one with a key and repoints its surveys`() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val dbFile = File(context.cacheDir, "migration-dedupe.db").apply { delete() }
+        createVersion1Database(dbFile)
+
+        // What a tablet looks like after the operator tapped Add twice and typed the
+        // key into only one of the two cards, with a survey queued against the other.
+        SQLiteDatabase.openOrCreateDatabase(dbFile, null).use { db ->
+            db.execSQL("ALTER TABLE laptop_endpoints ADD COLUMN apiKey TEXT NOT NULL DEFAULT ''")
+            db.execSQL(
+                "INSERT INTO laptop_endpoints (id, name, host, port, apiKey, lastSuccessAt) "
+                    + "VALUES ('laptop-2', '1번 X-ray실', '192.168.1.10', 18080, 'REAL-KEY', NULL)"
+            )
+            db.execSQL("UPDATE survey_records SET targetLaptopId = 'laptop-1' WHERE recordId = 'record-1'")
+            db.version = 2
+        }
+
+        val db = Room.databaseBuilder(context, AppDatabase::class.java, dbFile.absolutePath)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
+            .allowMainThreadQueries()
+            .build()
+
+        try {
+            runBlocking {
+                val endpoints = db.laptopEndpointDao().observeAll().first()
+                val survivor = endpoints.single()
+                // The row carrying a key wins: the blank duplicate would 401.
+                assertEquals("REAL-KEY", survivor.apiKey)
+                // A survey pointing at the deleted row would burn a retry attempt on
+                // every pass and never send.
+                assertEquals(survivor.id, db.surveyDao().getById("record-1")?.targetLaptopId)
             }
         } finally {
             db.close()

@@ -33,6 +33,8 @@ fun LaptopSelectScreen(
     onAddManual: (String, String, Int, String) -> Unit,
     onApiKeyChange: (String, String) -> Unit,
 ) {
+    val savedAddresses = savedEndpoints.map { "${it.host}:${it.port}" }.toSet()
+
     Scaffold { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
             LazyColumn(Modifier.fillMaxSize()) {
@@ -56,12 +58,18 @@ fun LaptopSelectScreen(
                     item { Text("Searching...") }
                 }
                 items(discoveredLaptops, key = { "${it.host}:${it.port}" }) { laptop ->
+                    val alreadySaved = "${laptop.host}:${laptop.port}" in savedAddresses
                     Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                         Column(Modifier.padding(12.dp)) {
                             Text(laptop.name)
                             Text("${laptop.host}:${laptop.port}")
-                            Button(onClick = { onAddManual(laptop.name, laptop.host, laptop.port, "") }) {
-                                Text("Add")
+                            // Saying it is already in the list above beats letting the
+                            // operator tap Add again and wonder why nothing happened.
+                            Button(
+                                onClick = { onAddManual(laptop.name, laptop.host, laptop.port, "") },
+                                enabled = !alreadySaved,
+                            ) {
+                                Text(if (alreadySaved) "Already added" else "Add")
                             }
                         }
                     }

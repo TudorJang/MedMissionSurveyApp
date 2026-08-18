@@ -30,6 +30,8 @@ private class FakeLaptopEndpointDao : LaptopEndpointDao {
     val endpoints = mutableMapOf<String, LaptopEndpoint>()
     override suspend fun upsert(endpoint: LaptopEndpoint) { endpoints[endpoint.id] = endpoint }
     override suspend fun getById(id: String): LaptopEndpoint? = endpoints[id]
+    override suspend fun getByAddress(host: String, port: Int): LaptopEndpoint? =
+        endpoints.values.firstOrNull { it.host == host && it.port == port }
     override fun observeAll(): Flow<List<LaptopEndpoint>> = flowOf(endpoints.values.toList())
 }
 

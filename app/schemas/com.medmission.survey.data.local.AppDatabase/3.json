@@ -1,0 +1,401 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 3,
+    "identityHash": "5acbfb19b49af024df444e43b0f2a27c",
+    "entities": [
+      {
+        "tableName": "survey_records",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`recordId` TEXT NOT NULL, `status` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `sentAt` INTEGER, `targetLaptopId` TEXT, `sendAttempts` INTEGER NOT NULL, `no` TEXT, `date` TEXT, `firstName` TEXT, `lastName` TEXT, `birthDate` TEXT, `gender` TEXT, `age` INTEGER, `address` TEXT, `region` TEXT, `province` TEXT, `city` TEXT, `barangay` TEXT, `zip` TEXT, `email` TEXT, `cellPhone` TEXT, `maritalStatus` TEXT, `maritalStatusOther` TEXT, `medicalHistory` TEXT NOT NULL, `medicalHistoryOthers` TEXT, `recentSurgeriesOrHospitalization` TEXT, `currentMedication` TEXT, `height` REAL, `weight` REAL, `bpSystolic` INTEGER, `bpDiastolic` INTEGER, `pulseRate` INTEGER, `respiratoryRate` INTEGER, `temperature` REAL, `oxygenSaturation` REAL, `bloodGlucose` REAL, `symptoms` TEXT NOT NULL, `everDiagnosedTB` TEXT, `diagnosisYear` TEXT, `everReceivedTreatment` TEXT, `treatmentCompleted` TEXT, `closeContactActiveTB` TEXT, `closeContactWhen` TEXT, `householdMemberTBTreatment` TEXT, `smokingStatus` TEXT, `smokingDuration` TEXT, `drinksAlcohol` INTEGER, `alcoholAmount` TEXT, `dustSmokeChemicalExposure` INTEGER, `cooksWithSolidFuels` INTEGER, `secondhandSmokeExposure` INTEGER, `crowdedLivingConditions` INTEGER, PRIMARY KEY(`recordId`))",
+        "fields": [
+          {
+            "fieldPath": "recordId",
+            "columnName": "recordId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sentAt",
+            "columnName": "sentAt",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "targetLaptopId",
+            "columnName": "targetLaptopId",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "sendAttempts",
+            "columnName": "sendAttempts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "no",
+            "columnName": "no",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "firstName",
+            "columnName": "firstName",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lastName",
+            "columnName": "lastName",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "birthDate",
+            "columnName": "birthDate",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "gender",
+            "columnName": "gender",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "age",
+            "columnName": "age",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "address",
+            "columnName": "address",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "region",
+            "columnName": "region",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "province",
+            "columnName": "province",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "city",
+            "columnName": "city",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "barangay",
+            "columnName": "barangay",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "zip",
+            "columnName": "zip",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "email",
+            "columnName": "email",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "cellPhone",
+            "columnName": "cellPhone",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "maritalStatus",
+            "columnName": "maritalStatus",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "maritalStatusOther",
+            "columnName": "maritalStatusOther",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "medicalHistory",
+            "columnName": "medicalHistory",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "medicalHistoryOthers",
+            "columnName": "medicalHistoryOthers",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "recentSurgeriesOrHospitalization",
+            "columnName": "recentSurgeriesOrHospitalization",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "currentMedication",
+            "columnName": "currentMedication",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "height",
+            "columnName": "height",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "weight",
+            "columnName": "weight",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "bpSystolic",
+            "columnName": "bpSystolic",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "bpDiastolic",
+            "columnName": "bpDiastolic",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "pulseRate",
+            "columnName": "pulseRate",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "respiratoryRate",
+            "columnName": "respiratoryRate",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "temperature",
+            "columnName": "temperature",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "oxygenSaturation",
+            "columnName": "oxygenSaturation",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "bloodGlucose",
+            "columnName": "bloodGlucose",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "symptoms",
+            "columnName": "symptoms",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "everDiagnosedTB",
+            "columnName": "everDiagnosedTB",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "diagnosisYear",
+            "columnName": "diagnosisYear",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "everReceivedTreatment",
+            "columnName": "everReceivedTreatment",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "treatmentCompleted",
+            "columnName": "treatmentCompleted",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "closeContactActiveTB",
+            "columnName": "closeContactActiveTB",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "closeContactWhen",
+            "columnName": "closeContactWhen",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "householdMemberTBTreatment",
+            "columnName": "householdMemberTBTreatment",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "smokingStatus",
+            "columnName": "smokingStatus",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "smokingDuration",
+            "columnName": "smokingDuration",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "drinksAlcohol",
+            "columnName": "drinksAlcohol",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "alcoholAmount",
+            "columnName": "alcoholAmount",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "dustSmokeChemicalExposure",
+            "columnName": "dustSmokeChemicalExposure",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "cooksWithSolidFuels",
+            "columnName": "cooksWithSolidFuels",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "secondhandSmokeExposure",
+            "columnName": "secondhandSmokeExposure",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "crowdedLivingConditions",
+            "columnName": "crowdedLivingConditions",
+            "affinity": "INTEGER",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "recordId"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "laptop_endpoints",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `host` TEXT NOT NULL, `port` INTEGER NOT NULL, `apiKey` TEXT NOT NULL, `lastSuccessAt` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "host",
+            "columnName": "host",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "port",
+            "columnName": "port",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "apiKey",
+            "columnName": "apiKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSuccessAt",
+            "columnName": "lastSuccessAt",
+            "affinity": "INTEGER",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_laptop_endpoints_host_port",
+            "unique": true,
+            "columnNames": [
+              "host",
+              "port"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_laptop_endpoints_host_port` ON `${TABLE_NAME}` (`host`, `port`)"
+          }
+        ],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5acbfb19b49af024df444e43b0f2a27c')"
+    ]
+  }
+}
