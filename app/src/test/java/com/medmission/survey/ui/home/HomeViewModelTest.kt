@@ -59,4 +59,23 @@ class HomeViewModelTest {
         assertEquals(unsorted, viewModel.records.first())
         collectorJob.cancel()
     }
+
+    @Test
+    fun `sent records get their x-ray status from the bridge`() = runTest(testDispatcher) {
+        val sent = SurveyRecord(recordId = "r-1", status = SyncStatus.SENT, targetLaptopId = "l1")
+        val draft = SurveyRecord(recordId = "r-2", status = SyncStatus.DRAFT)
+        val repo: SurveyRepository = mock()
+        whenever(repo.observeAll()).thenReturn(flowOf(listOf(sent, draft)))
+        whenever(repo.fetchXrayStatus(sent)).thenReturn("Completed")
+
+        val viewModel = HomeViewModel(repo)
+        val statusJob = launch { viewModel.xrayStatuses.collect {} }
+        // The status flow re-polls forever by design, so advanceUntilIdle() would never
+        // idle — run just far enough for the first round of fetches to land.
+        testDispatcher.scheduler.advanceTimeBy(1_000)
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(mapOf("r-1" to "Completed"), viewModel.xrayStatuses.value)
+        statusJob.cancel()
+    }
 }

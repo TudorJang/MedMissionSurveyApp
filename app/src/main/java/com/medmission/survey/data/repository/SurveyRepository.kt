@@ -29,6 +29,19 @@ class SurveyRepository(
 
     suspend fun countAll(): Int = surveyDao.countAll()
 
+    /**
+     * What the X-ray side did with a survey this tablet sent — or null when the laptop
+     * cannot be asked right now. Display-only: nothing is stored, the next look asks again.
+     */
+    suspend fun fetchXrayStatus(record: SurveyRecord): String? {
+        val laptopId = record.targetLaptopId ?: return null
+        val endpoint = laptopEndpointDao.getById(laptopId) ?: return null
+        val baseUrl = "http://${endpoint.host}:${endpoint.port}"
+        return apiClient
+            .getSurveyStatus(baseUrl, endpoint.apiKey.ifBlank { apiKey }, record.recordId)
+            .getOrNull()
+    }
+
     suspend fun sendToLaptop(recordId: String, laptopId: String): Result<Unit> {
         // Not retryable and nothing in the DB to update — there is no row to count
         // attempts against. Since FormViewModel now persists every record at creation,

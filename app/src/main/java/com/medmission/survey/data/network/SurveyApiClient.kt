@@ -17,6 +17,9 @@ class UnauthorizedException(message: String) : IOException(message)
 
 interface SurveyApiClient {
     suspend fun sendSurvey(baseUrl: String, apiKey: String, payload: SurveyPayloadDto): Result<Unit>
+
+    /** What became of a survey on the laptop: Received, InProgress, Completed, Cancelled. */
+    suspend fun getSurveyStatus(baseUrl: String, apiKey: String, recordId: String): Result<String>
 }
 
 class OkHttpSurveyApiClient(
@@ -42,6 +45,36 @@ class OkHttpSurveyApiClient(
                 }
             } catch (e: IOException) {
                 Result.failure(e)
+            }
+        }
+
+    override suspend fun getSurveyStatus(baseUrl: String, apiKey: String, recordId: String): Result<String> =
+        withContext(Dispatchers.IO) {
+            try {
+                val request = Request.Builder()
+                    .url("$baseUrl/api/v1/surveys/$recordId/status")
+                    .header("X-Api-Key", apiKey)
+                    .get()
+                    .build()
+                client.newCall(request).execute().use { response ->
+                    when {
+                        response.isSuccessful -> {
+                            val body = response.body?.string().orEmpty()
+                            val status = json.parseToJsonElement(body)
+                                .let { it as? kotlinx.serialization.json.JsonObject }
+                                ?.get("status")
+                                ?.let { it as? kotlinx.serialization.json.JsonPrimitive }?.content
+                            if (status != null) Result.success(status)
+                            else Result.failure(IOException("No status in response"))
+                        }
+                        response.code == 401 -> Result.failure(UnauthorizedException("HTTP 401"))
+                        else -> Result.failure(IOException("HTTP ${response.code}"))
+                    }
+                }
+            } catch (e: IOException) {
+                Result.failure(e)
+            } catch (e: kotlinx.serialization.SerializationException) {
+                Result.failure(IOException("Unparseable status response", e))
             }
         }
 }

@@ -30,12 +30,22 @@ private fun statusColor(status: SyncStatus): Color = when (status) {
     SyncStatus.FAILED -> FailedRed
 }
 
+/** The bridge's worklist words, in the registration desk's words. */
+private fun xrayLabel(status: String): String = when (status) {
+    "Received" -> "Waiting for X-ray"
+    "InProgress" -> "In the X-ray room"
+    "Completed" -> "X-ray done"
+    "Cancelled" -> "Cancelled at the laptop"
+    else -> status
+}
+
 @Composable
 fun HomeScreen(
     records: List<SurveyRecord>,
     onNewSurvey: () -> Unit,
     onRecordClick: (String) -> Unit,
     onResend: (String) -> Unit,
+    xrayStatuses: Map<String, String> = emptyMap(),
 ) {
     Scaffold { padding ->
         Column(Modifier.fillMaxSize().padding(padding), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -62,6 +72,16 @@ fun HomeScreen(
                             if (record.status == SyncStatus.FAILED) {
                                 Button(onClick = { onResend(record.recordId) }) {
                                     Text("Send again")
+                                }
+                            }
+                            // What the X-ray side did with it, fetched from the laptop.
+                            // Only for SENT records — everything else hasn't left yet.
+                            if (record.status == SyncStatus.SENT) {
+                                xrayStatuses[record.recordId]?.let { status ->
+                                    Text(
+                                        text = xrayLabel(status),
+                                        color = if (status == "Completed") SentGreen else PendingAmber,
+                                    )
                                 }
                             }
                         }

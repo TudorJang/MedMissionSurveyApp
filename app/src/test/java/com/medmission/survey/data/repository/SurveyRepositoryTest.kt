@@ -43,6 +43,8 @@ private class FakeSurveyApiClient(private val result: Result<Unit>) : SurveyApiC
         lastCallApiKey = apiKey
         return result
     }
+    override suspend fun getSurveyStatus(baseUrl: String, apiKey: String, recordId: String): Result<String> =
+        Result.failure(UnsupportedOperationException("not under test"))
 }
 
 /** Fails the first call, succeeds afterwards, and records every payload it saw. */
@@ -52,6 +54,8 @@ private class FailsOnceThenSucceedsApiClient : SurveyApiClient {
         payloads += payload
         return if (payloads.size == 1) Result.failure(IOException("boom")) else Result.success(Unit)
     }
+    override suspend fun getSurveyStatus(baseUrl: String, apiKey: String, recordId: String): Result<String> =
+        Result.failure(UnsupportedOperationException("not under test"))
 }
 
 class SurveyRepositoryTest {

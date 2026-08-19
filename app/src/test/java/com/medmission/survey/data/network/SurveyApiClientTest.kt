@@ -65,4 +65,26 @@ class SurveyApiClientTest {
 
         assertTrue(result.isFailure)
     }
+
+    @Test
+    fun `asks the bridge what became of a survey and returns the status`() = runTest {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"status":"Completed"}"""))
+        val baseUrl = server.url("/").toString().trimEnd('/')
+
+        val result = client.getSurveyStatus(baseUrl, "test-key-123", "r-1")
+
+        assertEquals("Completed", result.getOrNull())
+        val recorded = server.takeRequest()
+        assertEquals("GET", recorded.method)
+        assertEquals("/api/v1/surveys/r-1/status", recorded.path)
+        assertEquals("test-key-123", recorded.getHeader("X-Api-Key"))
+    }
+
+    @Test
+    fun `a status the bridge does not know is a failure, not a crash`() = runTest {
+        server.enqueue(MockResponse().setResponseCode(404))
+        val baseUrl = server.url("/").toString().trimEnd('/')
+
+        assertTrue(client.getSurveyStatus(baseUrl, "test-key-123", "r-1").isFailure)
+    }
 }

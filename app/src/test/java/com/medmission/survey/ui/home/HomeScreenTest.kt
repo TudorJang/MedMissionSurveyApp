@@ -62,4 +62,34 @@ class HomeScreenTest {
 
         compose.onNodeWithText("Send again").assertDoesNotExist()
     }
+
+    @Test
+    fun `a sent record shows what the x-ray side did with it`() {
+        compose.setContent {
+            HomeScreen(
+                records = listOf(record(SyncStatus.SENT)),
+                onNewSurvey = {},
+                onRecordClick = {},
+                onResend = {},
+                xrayStatuses = mapOf("r-1" to "Completed"),
+            )
+        }
+
+        compose.onNodeWithText("X-ray done").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a sent record the x-ray has not taken up says so`() {
+        compose.setContent {
+            HomeScreen(
+                records = listOf(record(SyncStatus.SENT)),
+                onNewSurvey = {},
+                onRecordClick = {},
+                onResend = {},
+                xrayStatuses = mapOf("r-1" to "Received"),
+            )
+        }
+
+        compose.onNodeWithText("Waiting for X-ray").assertIsDisplayed()
+    }
 }

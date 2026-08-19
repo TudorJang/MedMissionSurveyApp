@@ -36,8 +36,10 @@ fun SurveyNavGraph(navController: NavHostController = rememberNavController()) {
                 factory = viewModelFactory { initializer { HomeViewModel(app.surveyRepository) } },
             )
             val records by viewModel.records.collectAsState()
+            val xrayStatuses by viewModel.xrayStatuses.collectAsState()
             HomeScreen(
                 records = records,
+                xrayStatuses = xrayStatuses,
                 onNewSurvey = { navController.navigate("form") },
                 onRecordClick = { recordId -> navController.navigate("form?recordId=$recordId") },
                 // Straight back to laptop selection: that screen already holds the key

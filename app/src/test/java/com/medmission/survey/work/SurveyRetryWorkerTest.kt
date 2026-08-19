@@ -48,6 +48,8 @@ private class AlwaysSucceedsApiClient : SurveyApiClient {
         payloads += payload
         return Result.success(Unit)
     }
+    override suspend fun getSurveyStatus(baseUrl: String, apiKey: String, recordId: String): Result<String> =
+        Result.failure(UnsupportedOperationException("not under test"))
 }
 
 private class AlwaysFailsApiClient : SurveyApiClient {
@@ -56,6 +58,8 @@ private class AlwaysFailsApiClient : SurveyApiClient {
         payloads += payload
         return Result.failure(IOException("network down"))
     }
+    override suspend fun getSurveyStatus(baseUrl: String, apiKey: String, recordId: String): Result<String> =
+        Result.failure(UnsupportedOperationException("not under test"))
 }
 
 @RunWith(RobolectricTestRunner::class)

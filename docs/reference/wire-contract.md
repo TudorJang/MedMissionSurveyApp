@@ -268,3 +268,16 @@ names in the "Wire value" column, not the spec names.** Bridge-side code must ma
 **DICOM conversion is the bridge's job.** DICOM `DA` VR wants `YYYYMMDD`; the bridge
 strips the hyphens after successful ISO parsing. The tablet will not emit DICOM
 formats.
+
+## Status lookup (tablet → bridge)
+
+Besides the POST above, the app polls `GET /api/v1/surveys/{recordId}/status` (same
+`X-Api-Key` header) for records it has sent, and shows the answer on the home list:
+
+    200  {"status":"Received"}   also InProgress, Completed, Cancelled
+    401  wrong key — shown nowhere, the row simply carries no X-ray line
+    404  the bridge does not know the record
+
+Display only: the tablet stores nothing from this call and asks again on the next
+poll (every 30 s while the home screen is visible).
+
