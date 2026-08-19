@@ -1,6 +1,8 @@
 package com.medmission.survey.ui.laptopselect
 
 import com.medmission.survey.data.model.LaptopEndpoint
+import com.medmission.survey.data.model.SurveyRecord
+import com.medmission.survey.data.model.SyncStatus
 import com.medmission.survey.data.network.DiscoveredLaptop
 import com.medmission.survey.data.network.NsdDiscoveryService
 import com.medmission.survey.data.repository.LaptopEndpointRepository
@@ -78,5 +80,39 @@ class LaptopSelectViewModelTest {
 
         assertTrue(result.isSuccess)
         verify(surveyRepo).sendToLaptop("record-1", "laptop-1")
+    }
+
+    @Test
+    fun `priorSend names the laptop a sent record already went to`() = runTest(testDispatcher) {
+        val laptopRepo: LaptopEndpointRepository = mock()
+        whenever(laptopRepo.observeAll()).thenReturn(flowOf(emptyList()))
+        whenever(laptopRepo.getById("l1"))
+            .thenReturn(LaptopEndpoint(id = "l1", name = "1번 X-ray실", host = "h", port = 1))
+        val surveyRepo: SurveyRepository = mock()
+        whenever(surveyRepo.getById("record-1"))
+            .thenReturn(SurveyRecord(recordId = "record-1", status = SyncStatus.SENT, targetLaptopId = "l1"))
+
+        val viewModel = LaptopSelectViewModel(laptopRepo, FakeNsdDiscoveryService(emptyList()), surveyRepo, "record-1")
+        val job = launch { viewModel.priorSend.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(PriorSend("l1", "1번 X-ray실"), viewModel.priorSend.value)
+        job.cancel()
+    }
+
+    @Test
+    fun `a record that never arrived anywhere has no prior send`() = runTest(testDispatcher) {
+        val laptopRepo: LaptopEndpointRepository = mock()
+        whenever(laptopRepo.observeAll()).thenReturn(flowOf(emptyList()))
+        val surveyRepo: SurveyRepository = mock()
+        whenever(surveyRepo.getById("record-1"))
+            .thenReturn(SurveyRecord(recordId = "record-1", status = SyncStatus.FAILED, targetLaptopId = "l1"))
+
+        val viewModel = LaptopSelectViewModel(laptopRepo, FakeNsdDiscoveryService(emptyList()), surveyRepo, "record-1")
+        val job = launch { viewModel.priorSend.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(null, viewModel.priorSend.value)
+        job.cancel()
     }
 }

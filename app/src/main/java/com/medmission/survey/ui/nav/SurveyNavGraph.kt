@@ -91,9 +91,11 @@ fun SurveyNavGraph(navController: NavHostController = rememberNavController()) {
             val discovered by viewModel.discovered.collectAsState()
             val scope = rememberCoroutineScope()
             val context = LocalContext.current
+            val priorSend by viewModel.priorSend.collectAsState()
             LaptopSelectScreen(
                 savedEndpoints = saved,
                 discoveredLaptops = discovered,
+                priorSend = priorSend,
                 onSelect = { laptopId ->
                     scope.launch {
                         val result = viewModel.send(laptopId)

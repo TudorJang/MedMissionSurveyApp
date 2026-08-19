@@ -8,12 +8,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,8 +34,38 @@ fun LaptopSelectScreen(
     onSelect: (String) -> Unit,
     onAddManual: (String, String, Int, String) -> Unit,
     onApiKeyChange: (String, String) -> Unit,
+    priorSend: PriorSend? = null,
 ) {
     val savedAddresses = savedEndpoints.map { "${it.host}:${it.port}" }.toSet()
+
+    // A survey that already reached one laptop, about to be sent to a different one:
+    // the patient would appear on both consoles' worklists, and neither laptop can see
+    // the other to warn anyone later. Ask now, while a person is looking.
+    var askBeforeSending by remember { mutableStateOf<String?>(null) }
+    fun requestSend(laptopId: String) {
+        if (priorSend != null && priorSend.laptopId != laptopId) askBeforeSending = laptopId
+        else onSelect(laptopId)
+    }
+    askBeforeSending?.let { pending ->
+        AlertDialog(
+            onDismissRequest = { askBeforeSending = null },
+            title = { Text("Already sent") },
+            text = {
+                Text(
+                    "This survey was already sent to " +
+                        (priorSend?.laptopName ?: "another laptop") +
+                        ". Sending it to a second laptop puts this patient on both X-ray " +
+                        "worklists. Send anyway?"
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { askBeforeSending = null; onSelect(pending) }) { Text("Send anyway") }
+            },
+            dismissButton = {
+                TextButton(onClick = { askBeforeSending = null }) { Text("Cancel") }
+            },
+        )
+    }
 
     Scaffold { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
@@ -48,7 +80,7 @@ fun LaptopSelectScreen(
                             Text(endpoint.name)
                             Text("${endpoint.host}:${endpoint.port}")
                             ApiKeyField(endpoint) { key -> onApiKeyChange(endpoint.id, key) }
-                            Button(onClick = { onSelect(endpoint.id) }) { Text("Send") }
+                            Button(onClick = { requestSend(endpoint.id) }) { Text("Send") }
                         }
                     }
                 }

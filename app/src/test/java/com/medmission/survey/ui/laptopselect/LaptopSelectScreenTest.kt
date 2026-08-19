@@ -2,7 +2,9 @@ package com.medmission.survey.ui.laptopselect
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import com.medmission.survey.data.model.LaptopEndpoint
 import org.junit.Rule
 import org.junit.Test
@@ -50,5 +52,50 @@ class LaptopSelectScreenTest {
         show("C79QS-CQ8RM-5QRWU-ABDEE")
 
         compose.onNodeWithText("Case-sensitive, exactly as shown on the laptop").assertIsDisplayed()
+    }
+
+    private fun endpoint(id: String, name: String) =
+        LaptopEndpoint(id = id, name = name, host = "192.168.8.$id", port = 18080, apiKey = "k")
+
+    @Test
+    fun `sending an already-sent survey to a second laptop asks first`() {
+        var selected: String? = null
+        compose.setContent {
+            LaptopSelectScreen(
+                savedEndpoints = listOf(endpoint("1", "Lane A"), endpoint("2", "Lane B")),
+                discoveredLaptops = emptyList(),
+                onSelect = { selected = it },
+                onAddManual = { _, _, _, _ -> },
+                onApiKeyChange = { _, _ -> },
+                priorSend = PriorSend(laptopId = "1", laptopName = "Lane A"),
+            )
+        }
+
+        compose.onAllNodesWithText("Send")[1].performClick()
+
+        org.junit.Assert.assertNull(selected)
+        compose.onNodeWithText("Send anyway").assertIsDisplayed()
+        compose.onNodeWithText("Send anyway").performClick()
+        org.junit.Assert.assertEquals("2", selected)
+    }
+
+    @Test
+    fun `re-sending to the same laptop does not ask`() {
+        var selected: String? = null
+        compose.setContent {
+            LaptopSelectScreen(
+                savedEndpoints = listOf(endpoint("1", "Lane A")),
+                discoveredLaptops = emptyList(),
+                onSelect = { selected = it },
+                onAddManual = { _, _, _, _ -> },
+                onApiKeyChange = { _, _ -> },
+                priorSend = PriorSend(laptopId = "1", laptopName = "Lane A"),
+            )
+        }
+
+        compose.onAllNodesWithText("Send")[0].performClick()
+
+        org.junit.Assert.assertEquals("1", selected)
+        compose.onNodeWithText("Send anyway").assertDoesNotExist()
     }
 }
