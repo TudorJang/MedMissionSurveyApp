@@ -9,19 +9,38 @@ class FormFormattingTest {
 
     // ---- devicePrefixFrom ----
 
+    // The prefix space is base36 (0-9A-Z), 36^4 = 1,679,616 — 26x the old hex tail.
+    // The console team confirmed no code parses or validates the accession format, so
+    // widening the alphabet is a tablet-only release. Values are pinned so the
+    // derivation never drifts silently: a drifted prefix would strand a device's
+    // numbering mid-campaign.
+
     @Test
-    fun `devicePrefixFrom takes the last 4 characters uppercased`() {
-        assertEquals("A3F2", devicePrefixFrom("9f8e7d6c5b4aa3f2"))
+    fun `devicePrefixFrom derives a pinned base36 prefix from the whole id`() {
+        assertEquals("WZIC", devicePrefixFrom("9f8e7d6c5b4aa3f2"))
+        assertEquals("6NTW", devicePrefixFrom("ab"))
     }
 
     @Test
-    fun `devicePrefixFrom pads a short id with leading zeros`() {
-        assertEquals("00AB", devicePrefixFrom("ab"))
+    fun `devicePrefixFrom stays within 0-9A-Z and 4 characters`() {
+        for (id in listOf("emulatorA", "emulatorB", "x", "9f8e7d6c5b4aa3f2")) {
+            val prefix = devicePrefixFrom(id)
+            assertEquals(4, prefix.length)
+            assertEquals(true, prefix.all { it in '0'..'9' || it in 'A'..'Z' })
+        }
     }
 
     @Test
-    fun `devicePrefixFrom falls back to zeros for a null id`() {
+    fun `devicePrefixFrom is deterministic and separates devices`() {
+        assertEquals(devicePrefixFrom("emulatorA"), devicePrefixFrom("emulatorA"))
+        assertEquals("C5HB", devicePrefixFrom("emulatorA"))
+        assertEquals("J54W", devicePrefixFrom("emulatorB"))
+    }
+
+    @Test
+    fun `devicePrefixFrom falls back to zeros for a null or blank id`() {
         assertEquals("0000", devicePrefixFrom(null))
+        assertEquals("0000", devicePrefixFrom("  "))
     }
 
     // ---- formatRecordNo ----

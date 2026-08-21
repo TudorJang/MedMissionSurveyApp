@@ -1,13 +1,29 @@
 package com.medmission.survey.util
 
+import java.security.MessageDigest
 import java.time.LocalDate
 import java.time.Period
 
-/** Last 4 alphanumeric characters of a device id, uppercased. Falls back to "0000". */
+/**
+ * Four base36 characters (0-9A-Z) derived from the whole device id: 36^4 = 1,679,616
+ * prefixes, 26x the old hex-tail space, so two tablets colliding on a number becomes
+ * that much rarer. The console team confirmed nothing parses the accession format, so
+ * this is a tablet-only change. SHA-256 keeps it deterministic per device; falls back
+ * to "0000" when there is no id at all.
+ */
 fun devicePrefixFrom(deviceId: String?): String {
-    val cleaned = deviceId?.filter { it.isLetterOrDigit() }.orEmpty()
-    val tail = cleaned.takeLast(4).ifEmpty { "0000" }
-    return tail.uppercase().padStart(4, '0')
+    val id = deviceId?.takeIf { it.isNotBlank() } ?: return "0000"
+    val digest = MessageDigest.getInstance("SHA-256").digest(id.toByteArray(Charsets.UTF_8))
+    var acc = 0L
+    for (i in 0 until 8) acc = (acc shl 8) or (digest[i].toLong() and 0xFF)
+    var n = ((acc and Long.MAX_VALUE) % 1_679_616L).toInt()
+    val alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    val prefix = CharArray(4)
+    for (i in 3 downTo 0) {
+        prefix[i] = alphabet[n % 36]
+        n /= 36
+    }
+    return String(prefix)
 }
 
 /** e.g. "TAB-A3F2-0001". The index is never truncated, only ever zero-padded to 4+ digits. */

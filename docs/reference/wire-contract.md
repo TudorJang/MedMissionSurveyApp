@@ -131,7 +131,7 @@ Every field is optional; the app never blocks send on a missing value.
 | JSON path | Type |
 |---|---|
 | `recordId` | String (UUID), always present |
-| `no` | String |
+| `no` | String — `TAB-` + 기기 접두사 4자(base36, `0-9A-Z`) + `-` + 일련번호 4자리 이상. 접두사는 기기 ID의 SHA-256에서 유도돼 기기마다 고정 (2026-08-21부터 base36 — 이전 릴리스는 16진 대문자였고, 콘솔 측은 형식을 파싱하지 않음이 확인됨) |
 | `date` | String — ISO-8601 `YYYY-MM-DD`, machine-generated, always valid (see §6) |
 | `patient.firstName`, `.lastName`, `.city`, `.zip`, `.email`, `.cellPhone` | String |
 | `patient.address` | String — as of the PSGC address hierarchy feature, holds only street/subdivision/landmark text, not a full address. The complete address is `address` + `barangay` + `city` + `province` + `region` combined; this field previously held the complete free-text address. |
