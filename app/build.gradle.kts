@@ -23,8 +23,12 @@ android {
         applicationId = "com.medmission.survey"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        // Bump both on every release that leaves this machine: the versionName is what
+        // the home screen shows, and it is the only way to tell across a table which
+        // tablet still runs an old build. Same-version reinstalls do work on Android,
+        // which is exactly why an unbumped number lies.
+        versionCode = 2
+        versionName = "1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Override for a real deployment with -PsurveyApiKey=... or a surveyApiKey
         // entry in gradle.properties / local.properties. The fallback is a dev-only value.
