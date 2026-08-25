@@ -167,6 +167,7 @@ is what the tablet displays; the bridge should never match on it.
 |---|---|
 | `MALE` | Male |
 | `FEMALE` | Female |
+| `OTHER` | Other |
 
 ### `patient.maritalStatus` — `MaritalStatus`
 
