@@ -141,7 +141,7 @@ Every field is optional; the app never blocks send on a missing value.
 | `patient.cellPhone` | String — **E.164 on the wire** (`"+639171234567"`), whatever grouping the field showed while it was typed. A number that cannot be parsed for the country is sent exactly as typed rather than dropped. |
 | `patient.birthDate` | String — ISO-8601 `YYYY-MM-DD` shape; may be partial or invalid, parse-or-ignore (see §6) |
 | `patient.age` | Int |
-| `patient.gender`, `.maritalStatus` | String enum — see §5 |
+| `patient.gender` | String — `MALE`, `FEMALE` or `OTHER`. Absent when the question was not answered; the bridge maps them to DICOM Patient Sex `M`, `F`, `O` and omits the attribute when there is no answer. There is no default: a default here would file every patient nobody asked as the same sex. |
 | `patient.maritalStatusOther` | String — only meaningful when `maritalStatus` is `OTHER`; the app clears it whenever `maritalStatus` changes away from `OTHER` |
 | `medicalHistory.items` | Array of String enum — see §5 |
 | `medicalHistory.others`, `.recentSurgeriesOrHospitalization`, `.currentMedication` | String |

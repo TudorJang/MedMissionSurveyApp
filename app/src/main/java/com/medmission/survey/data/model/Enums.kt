@@ -5,6 +5,15 @@ enum class SyncStatus { DRAFT, PENDING, SENT, FAILED }
 enum class Gender(val label: String) {
     MALE("Male"),
     FEMALE("Female"),
+
+    /**
+     * DICOM's Patient Sex has had M, F and O since the beginning, and the console's own
+     * patient screen offers the same three — so a patient who is neither can be recorded
+     * as themselves rather than as a guess. Deliberately left with no default: an
+     * unanswered question stays unanswered, because a default here would file every
+     * patient nobody asked as the same sex.
+     */
+    OTHER("Other"),
 }
 
 enum class MaritalStatus(val label: String) {
