@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -117,6 +118,9 @@ fun FormScreen(
     onToggleMedicalHistory: (MedicalHistoryItem) -> Unit,
     onToggleSymptom: (Symptom) -> Unit,
     onDone: () -> Unit,
+    /** Leaves the form. An untouched draft is discarded by the caller so the list does
+     *  not fill with blanks; anything typed in stays as a draft. */
+    onCancel: () -> Unit = {},
     psgcRepository: com.medmission.survey.data.psgc.PsgcRepository,
     // Which address questions to ask. The caller also supplies the phone mask, so this
     // screen stays free of the phone metadata and can be driven from a test.
@@ -646,11 +650,31 @@ fun FormScreen(
                 BlankFieldRow("Date referred")
             }
 
-            Button(
-                onClick = onDone,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Done")
+            // A worklist entry with no name is unusable at the console — the operator
+            // has nothing to call the patient by and nothing to search on — so this is
+            // the one thing the form insists on.
+            val hasName = !record.firstName.isNullOrBlank() || !record.lastName.isNullOrBlank()
+            var showNameWarning by rememberSaveable { mutableStateOf(false) }
+            if (showNameWarning && !hasName) {
+                Text(
+                    "Enter a first name or a last name before continuing.",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(
+                    onClick = onCancel,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Cancel")
+                }
+                Button(
+                    onClick = { if (hasName) onDone() else showNameWarning = true },
+                    modifier = Modifier.weight(2f),
+                ) {
+                    Text("Done")
+                }
             }
             Spacer(Modifier.height(8.dp))
         }

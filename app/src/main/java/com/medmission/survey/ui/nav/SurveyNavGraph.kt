@@ -80,6 +80,10 @@ fun SurveyNavGraph(navController: NavHostController = rememberNavController()) {
                 onToggleMedicalHistory = { viewModel.toggleMedicalHistory(it) },
                 onToggleSymptom = { viewModel.toggleSymptom(it) },
                 onDone = { navController.navigate("laptopSelect/${record.recordId}") },
+                // Backing out takes the placeholder row with it when nothing was typed,
+                // so a tapped-by-accident New Survey does not leave a blank in the list
+                // or consume a patient number.
+                onCancel = { viewModel.discardIfUntouched { navController.popBackStack() } },
                 psgcRepository = app.psgcRepository,
                 formMode = app.appSettings.formMode,
                 // The global form formats numbers for the country being screened; the

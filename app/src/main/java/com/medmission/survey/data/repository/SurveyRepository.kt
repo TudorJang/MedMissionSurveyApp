@@ -3,6 +3,7 @@ package com.medmission.survey.data.repository
 import com.medmission.survey.data.local.LaptopEndpointDao
 import com.medmission.survey.data.local.SurveyDao
 import com.medmission.survey.data.model.SurveyRecord
+import com.medmission.survey.data.model.isUntouched
 import com.medmission.survey.data.model.SyncStatus
 import com.medmission.survey.data.network.SurveyApiClient
 import com.medmission.survey.data.network.SurveyPayloadMapper
@@ -20,6 +21,23 @@ class SurveyRepository(
      *  to leaving it alone so a caller without phone metadata still works. */
     private val normalisePhone: (String, String?) -> String? = { typed, _ -> typed },
 ) {
+    /**
+     * Throws away a draft nobody filled in.
+     *
+     * Opening the form creates the row before a single field is typed, so that a
+     * straight-to-Done record exists to send and a tablet that dies mid-form loses
+     * nothing. The cost is that backing out — or an app restart that lands on the form —
+     * leaves an empty record and burns a patient number. Only genuinely untouched drafts
+     * go; anything with a keystroke in it is kept, because a half-filled survey is
+     * somebody's work.
+     */
+    suspend fun discardIfUntouched(recordId: String): Boolean {
+        val record = surveyDao.getById(recordId) ?: return false
+        if (record.status != SyncStatus.DRAFT || !record.isUntouched()) return false
+        surveyDao.deleteById(recordId)
+        return true
+    }
+
     suspend fun saveDraft(record: SurveyRecord) {
         surveyDao.upsert(record)
     }

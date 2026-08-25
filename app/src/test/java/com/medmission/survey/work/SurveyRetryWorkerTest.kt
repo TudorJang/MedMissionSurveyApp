@@ -31,6 +31,8 @@ private class FakeSurveyDao : SurveyDao {
     override suspend fun getByStatus(status: SyncStatus): List<SurveyRecord> =
         records.values.filter { it.status == status }
     override suspend fun countAll(): Int = records.size
+
+    override suspend fun deleteById(recordId: String) { records.remove(recordId) }
 }
 
 private class FakeLaptopEndpointDao : LaptopEndpointDao {

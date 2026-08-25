@@ -70,3 +70,30 @@ data class SurveyRecord(
     val secondhandSmokeExposure: Boolean? = null,
     val crowdedLivingConditions: Boolean? = null,
 )
+
+/**
+ * Whether nobody has typed anything into this survey yet.
+ *
+ * Opening the form writes the row before the first keystroke, so backing out of a form
+ * — or an app restart that lands on one — would otherwise leave an empty record behind
+ * and burn a patient number. Rather than list the fields to check and forget one later,
+ * this compares the record against what it looked like the moment it was created:
+ * everything the form assigns by itself is carried over, and if the result is equal,
+ * nothing was entered.
+ */
+fun SurveyRecord.isUntouched(): Boolean = this == SurveyRecord(
+    recordId = recordId,
+    status = status,
+    createdAt = createdAt,
+    sentAt = sentAt,
+    targetLaptopId = targetLaptopId,
+    sendAttempts = sendAttempts,
+    no = no,
+    date = date,
+    // The birth date starts on the creation date, so it counts as untouched only while
+    // it still equals it. Anything else means somebody entered a real one, and a record
+    // with a real birth date in it is not empty even if nothing else was filled.
+    birthDate = date,
+    age = if (birthDate == date) age else null,
+    country = country,
+)

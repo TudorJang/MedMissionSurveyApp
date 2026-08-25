@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.medmission.survey.data.model.MedicalHistoryItem
 import com.medmission.survey.data.model.Symptom
 import com.medmission.survey.data.model.SurveyRecord
+import com.medmission.survey.data.model.isUntouched
 import com.medmission.survey.data.repository.SurveyRepository
 import com.medmission.survey.data.model.SyncStatus
 import com.medmission.survey.util.formatRecordNo
@@ -34,6 +35,11 @@ class FormViewModel(
         SurveyRecord(
             recordId = recordId ?: java.util.UUID.randomUUID().toString(),
             country = country,
+            // The console substitutes today's date for a worklist item that omits the
+            // birth date, which turns every unanswered patient into a newborn without
+            // saying so. Showing today here puts the same value in front of the
+            // operator, where the age beside it reads 0 and asks to be corrected.
+            birthDate = if (recordId == null) todayLocalDateString() else null,
         ),
     )
     val record: StateFlow<SurveyRecord> = _record.asStateFlow()
@@ -143,5 +149,26 @@ class FormViewModel(
 
     companion object {
         private const val AUTOSAVE_DEBOUNCE_MS = 300L
+    }
+
+    /**
+     * Leaving the form without entering anything takes the placeholder row with it, so
+     * the list does not fill with blanks and the patient numbers stay contiguous. A form
+     * with any content in it is left alone — a half-filled survey is somebody's work.
+     */
+    fun discardIfUntouched(onDone: () -> Unit) {
+        viewModelScope.launch {
+            // What is on screen, not what reached the database: autosave is debounced,
+            // so a name typed a moment ago may not be written yet. Asking the database
+            // instead threw away a survey somebody had just started.
+            val current = _record.value
+            if (current.isUntouched()) {
+                repository.discardIfUntouched(current.recordId)
+            } else {
+                // Leaving early must not lose the keystrokes the debounce still owes.
+                repository.saveDraft(current)
+            }
+            onDone()
+        }
     }
 }

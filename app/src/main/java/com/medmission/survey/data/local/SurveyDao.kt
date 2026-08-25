@@ -23,4 +23,7 @@ interface SurveyDao {
 
     @Query("SELECT COUNT(*) FROM survey_records")
     suspend fun countAll(): Int
+
+    @Query("DELETE FROM survey_records WHERE recordId = :recordId")
+    suspend fun deleteById(recordId: String)
 }
