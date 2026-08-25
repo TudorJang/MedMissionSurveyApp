@@ -16,6 +16,9 @@ class SurveyRepository(
     private val laptopEndpointDao: LaptopEndpointDao,
     /** Fallback for endpoints saved without one; set at build time with -PsurveyApiKey. */
     private val apiKey: String,
+    /** What the operator typed, in the one form every later system agrees on. Defaults
+     *  to leaving it alone so a caller without phone metadata still works. */
+    private val normalisePhone: (String, String?) -> String? = { typed, _ -> typed },
 ) {
     suspend fun saveDraft(record: SurveyRecord) {
         surveyDao.upsert(record)
@@ -58,7 +61,7 @@ class SurveyRepository(
                 IllegalStateException("Laptop endpoint not found: $laptopId"),
             )
 
-        val payload = SurveyPayloadMapper.toDto(record)
+        val payload = SurveyPayloadMapper.toDto(record, normalisePhone)
         val baseUrl = "http://${endpoint.host}:${endpoint.port}"
         // Each bridge generates its own key, so the endpoint's key wins; the
         // build-time one only covers endpoints saved before a key was entered.

@@ -3,7 +3,16 @@ package com.medmission.survey.data.network
 import com.medmission.survey.data.model.SurveyRecord
 
 object SurveyPayloadMapper {
-    fun toDto(record: SurveyRecord): SurveyPayloadDto = SurveyPayloadDto(
+    /**
+     * @param normalisePhone turns what the operator typed into the one form every later
+     * system agrees on, E.164. The field itself keeps the national grouping the country
+     * writes, because that is what an operator checks against a piece of paper — the
+     * conversion belongs at the edge, where the payload is built.
+     */
+    fun toDto(
+        record: SurveyRecord,
+        normalisePhone: (String, String?) -> String? = { typed, _ -> typed },
+    ): SurveyPayloadDto = SurveyPayloadDto(
         recordId = record.recordId,
         no = record.no,
         date = record.date,
@@ -21,7 +30,7 @@ object SurveyPayloadMapper {
             country = record.country,
             zip = record.zip,
             email = record.email,
-            cellPhone = record.cellPhone,
+            cellPhone = record.cellPhone?.let { normalisePhone(it, record.country) } ?: record.cellPhone,
             maritalStatus = record.maritalStatus?.name,
             maritalStatusOther = record.maritalStatusOther,
         ),

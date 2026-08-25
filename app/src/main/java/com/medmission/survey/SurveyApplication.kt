@@ -45,7 +45,17 @@ class SurveyApplication : Application(), Configuration.Provider {
     }
 
     val surveyRepository by lazy {
-        SurveyRepository(database.surveyDao(), apiClient, database.laptopEndpointDao(), BuildConfig.SURVEY_API_KEY)
+        SurveyRepository(
+            database.surveyDao(), apiClient, database.laptopEndpointDao(),
+            BuildConfig.SURVEY_API_KEY,
+            // The country a record was collected in decides how its number reads; when
+            // the record does not say, this tablet's setting does. An unparseable
+            // number is sent as typed rather than dropped — a wrong-looking number an
+            // operator can still read beats no number at all.
+            normalisePhone = { typed, country ->
+                phoneFormatter.toE164(typed, country ?: appSettings.countryCode) ?: typed
+            },
+        )
     }
 
     val laptopEndpointRepository by lazy {
