@@ -29,6 +29,7 @@ data class PatientDto(
     val province: String? = null,
     val city: String? = null,
     val barangay: String? = null,
+    val country: String? = null,
     val zip: String? = null,
     val email: String? = null,
     val cellPhone: String? = null,

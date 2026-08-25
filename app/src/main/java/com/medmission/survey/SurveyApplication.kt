@@ -13,8 +13,10 @@ import com.medmission.survey.data.network.AndroidNsdDiscoveryService
 import com.medmission.survey.data.network.NsdDiscoveryService
 import com.medmission.survey.data.network.OkHttpSurveyApiClient
 import com.medmission.survey.data.psgc.PsgcRepository
+import com.medmission.survey.data.settings.AppSettings
 import com.medmission.survey.data.repository.LaptopEndpointRepository
 import com.medmission.survey.data.repository.SurveyRepository
+import com.medmission.survey.util.PhoneFormatter
 import com.medmission.survey.util.devicePrefixFrom
 import com.medmission.survey.work.SurveyRetryWorker
 import kotlinx.coroutines.CoroutineScope
@@ -29,7 +31,8 @@ class SurveyApplication : Application(), Configuration.Provider {
 
     private val database by lazy {
         Room.databaseBuilder(this, AppDatabase::class.java, "medmission-survey.db")
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3,
+                AppDatabase.MIGRATION_3_4)
             .build()
     }
 
@@ -56,6 +59,10 @@ class SurveyApplication : Application(), Configuration.Provider {
     val psgcRepository: PsgcRepository by lazy {
         PsgcRepository(this)
     }
+
+    val appSettings by lazy { AppSettings(this) }
+
+    val phoneFormatter by lazy { PhoneFormatter(this) }
 
     // Distinguishes this tablet's records from every other tablet's in the "No." field —
     // ANDROID_ID is stable for the life of the install (survives app updates, resets only

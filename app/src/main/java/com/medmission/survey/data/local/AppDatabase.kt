@@ -10,7 +10,7 @@ import com.medmission.survey.data.model.SurveyRecord
 
 @Database(
     entities = [SurveyRecord::class, LaptopEndpoint::class],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -75,5 +75,17 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_laptop_endpoints_host_port ON laptop_endpoints (host, port)")
             }
         }
+        /**
+         * The country an address was collected in. Nullable and defaulted to null:
+         * every record written before the global form existed was collected in the
+         * Philippines, and the bridge falls back to its own site setting when a payload
+         * does not say, so backfilling a value here would only invent certainty.
+         */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE survey_records ADD COLUMN country TEXT")
+            }
+        }
+
     }
 }

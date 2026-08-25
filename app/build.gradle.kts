@@ -27,8 +27,8 @@ android {
         // the home screen shows, and it is the only way to tell across a table which
         // tablet still runs an old build. Same-version reinstalls do work on Android,
         // which is exactly why an unbumped number lies.
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Override for a real deployment with -PsurveyApiKey=... or a surveyApiKey
         // entry in gradle.properties / local.properties. The fallback is a dev-only value.
@@ -106,6 +106,13 @@ dependencies {
 
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+
+    // Turning what an operator types into E.164 is per-country work, not a rule we can
+    // write down: most countries drop the trunk zero when the country code goes on,
+    // Italy keeps it, and some have no trunk prefix at all. A number that survives the
+    // trip is how a positive patient gets called back, so the metadata is worth the
+    // couple of megabytes. The android build repackages the metadata as assets.
+    implementation("io.michaelrocks:libphonenumber-android:8.13.35")
 
     testImplementation("junit:junit:4.13.2")
     // Compose UI tests run locally on Robolectric (no emulator needed):

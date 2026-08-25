@@ -25,9 +25,17 @@ class FormViewModel(
     private val repository: SurveyRepository,
     private val recordId: String?,
     private val devicePrefix: String = "0000",
+    /** Stamped onto a new record so the payload says where it was collected instead of
+     *  leaving a later reader to infer it from a city name. */
+    private val country: String? = null,
 ) : ViewModel() {
 
-    private val _record = MutableStateFlow(SurveyRecord(recordId = recordId ?: java.util.UUID.randomUUID().toString()))
+    private val _record = MutableStateFlow(
+        SurveyRecord(
+            recordId = recordId ?: java.util.UUID.randomUUID().toString(),
+            country = country,
+        ),
+    )
     val record: StateFlow<SurveyRecord> = _record.asStateFlow()
 
     // Autosave requests. replay = 1 so an edit made before the collector below starts

@@ -13,6 +13,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +52,7 @@ fun HomeScreen(
     onRecordClick: (String) -> Unit,
     onResend: (String) -> Unit,
     xrayStatuses: Map<String, String> = emptyMap(),
+    onSettings: () -> Unit = {},
 ) {
     Scaffold { padding ->
         Column(Modifier.fillMaxSize().padding(padding), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -64,11 +66,15 @@ fun HomeScreen(
                 }
                 // Which build this tablet runs — the answer to "is this one updated?"
                 // asked across a table at a screening site.
-                Text(
-                    text = "v${BuildConfig.VERSION_NAME}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "v${BuildConfig.VERSION_NAME}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                    TextButton(onClick = onSettings) { Text("Settings") }
+                }
             }
             LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                 items(records, key = { it.recordId }) { record ->

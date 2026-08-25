@@ -22,7 +22,14 @@ import com.medmission.survey.ui.form.FormScreen
 import com.medmission.survey.ui.form.FormViewModel
 import com.medmission.survey.ui.home.HomeScreen
 import com.medmission.survey.ui.home.HomeViewModel
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.medmission.survey.data.settings.FormMode
 import com.medmission.survey.ui.laptopselect.LaptopSelectScreen
+import com.medmission.survey.ui.settings.SettingsScreen
+import com.medmission.survey.util.formatCellPhoneInput
 import com.medmission.survey.ui.laptopselect.LaptopSelectViewModel
 import kotlinx.coroutines.launch
 
@@ -45,6 +52,7 @@ fun SurveyNavGraph(navController: NavHostController = rememberNavController()) {
                 // Straight back to laptop selection: that screen already holds the key
                 // field, which is what the operator had to fix before trying again.
                 onResend = { recordId -> navController.navigate("laptopSelect/$recordId") },
+                onSettings = { navController.navigate("settings") },
             )
         }
         composable(
@@ -56,7 +64,10 @@ fun SurveyNavGraph(navController: NavHostController = rememberNavController()) {
             // rebuild FormViewModel and mint a fresh UUID for an in-progress draft.
             val viewModel: FormViewModel = viewModel(
                 factory = viewModelFactory {
-                    initializer { FormViewModel(app.surveyRepository, recordId, app.devicePrefix) }
+                    initializer {
+                        FormViewModel(app.surveyRepository, recordId, app.devicePrefix,
+                            country = app.appSettings.countryCode)
+                    }
                 },
             )
             LaunchedEffect(recordId) {
@@ -70,6 +81,23 @@ fun SurveyNavGraph(navController: NavHostController = rememberNavController()) {
                 onToggleSymptom = { viewModel.toggleSymptom(it) },
                 onDone = { navController.navigate("laptopSelect/${record.recordId}") },
                 psgcRepository = app.psgcRepository,
+                formMode = app.appSettings.formMode,
+                // The global form formats numbers for the country being screened; the
+                // Philippine form keeps the mask it has always had.
+                formatPhone = if (app.appSettings.formMode == FormMode.GLOBAL) {
+                    { typed -> app.phoneFormatter.formatAsYouType(typed, app.appSettings.countryCode) }
+                } else ::formatCellPhoneInput,
+            )
+        }
+        composable("settings") {
+            var mode by remember { mutableStateOf(app.appSettings.formMode) }
+            var country by remember { mutableStateOf(app.appSettings.countryCode) }
+            SettingsScreen(
+                formMode = mode,
+                countryCode = country,
+                onFormModeChange = { app.appSettings.formMode = it; mode = it },
+                onCountryChange = { app.appSettings.countryCode = it; country = it },
+                onDone = { navController.popBackStack() },
             )
         }
         composable(

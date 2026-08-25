@@ -18,6 +18,7 @@ object SurveyPayloadMapper {
             province = record.province,
             city = record.city,
             barangay = record.barangay,
+            country = record.country,
             zip = record.zip,
             email = record.email,
             cellPhone = record.cellPhone,

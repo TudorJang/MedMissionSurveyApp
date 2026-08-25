@@ -27,6 +27,9 @@ data class SurveyRecord(
     val city: String? = null,
     val barangay: String? = null,
     val zip: String? = null,
+    /** ISO 3166-1 alpha-2, carried so a payload says which country it was collected in
+     *  rather than leaving every later reader to guess from a city name. */
+    val country: String? = null,
     val email: String? = null,
     val cellPhone: String? = null,
     val maritalStatus: MaritalStatus? = null,
