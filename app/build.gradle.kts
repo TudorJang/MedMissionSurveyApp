@@ -27,8 +27,8 @@ android {
         // the home screen shows, and it is the only way to tell across a table which
         // tablet still runs an old build. Same-version reinstalls do work on Android,
         // which is exactly why an unbumped number lies.
-        versionCode = 5
-        versionName = "1.4"
+        versionCode = 6
+        versionName = "1.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Override for a real deployment with -PsurveyApiKey=... or a surveyApiKey
         // entry in gradle.properties / local.properties. The fallback is a dev-only value.

@@ -10,6 +10,7 @@ import com.medmission.survey.data.model.isUntouched
 import com.medmission.survey.data.repository.SurveyRepository
 import com.medmission.survey.data.model.SyncStatus
 import com.medmission.survey.util.formatRecordNo
+import com.medmission.survey.util.calculateAge
 import com.medmission.survey.util.todayLocalDateString
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.BufferOverflow
@@ -43,6 +44,11 @@ class FormViewModel(
             birthDate = if (recordId == null) todayLocalDateString() else null,
             // Matching the console's own NEW STUDY screen, which starts on Male.
             gender = if (recordId == null) Gender.MALE else null,
+            // Age is derived from the birth date everywhere else in the form, so the
+            // default birth date has to bring its age with it — otherwise the field
+            // beside it sits empty and the 0 that says "nobody answered this" never
+            // appears.
+            age = if (recordId == null) calculateAge(todayLocalDateString()) else null,
         ),
     )
     val record: StateFlow<SurveyRecord> = _record.asStateFlow()

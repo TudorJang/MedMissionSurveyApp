@@ -17,6 +17,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import com.medmission.survey.util.todayLocalDateString
 import org.junit.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doSuspendableAnswer
@@ -279,5 +280,20 @@ class FormViewModelTest {
 
             assertTrue(left)
             verify(repository).discardIfUntouched(any())
+        }
+
+    @Test
+    fun `a new survey shows the age its default birth date implies`() =
+        runTest(testDispatcher) {
+            val repository: SurveyRepository = mock()
+            whenever(repository.countAll()).thenReturn(0)
+            val viewModel = FormViewModel(repository, recordId = null, country = "PH")
+            advanceUntilIdle()
+
+            val record = viewModel.record.value
+            // Born today reads as 0, which is the signal that nobody was asked — an
+            // empty age field beside a filled birth date would just look broken.
+            assertEquals(todayLocalDateString(), record.birthDate)
+            assertEquals(0, record.age)
         }
 }
