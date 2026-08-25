@@ -95,5 +95,8 @@ fun SurveyRecord.isUntouched(): Boolean = this == SurveyRecord(
     // with a real birth date in it is not empty even if nothing else was filled.
     birthDate = date,
     age = if (birthDate == date) age else null,
+    // Same reasoning as the birth date: the form starts on Male to match the console,
+    // so a record still showing it has not necessarily been answered.
+    gender = if (gender == Gender.MALE) gender else null,
     country = country,
 )

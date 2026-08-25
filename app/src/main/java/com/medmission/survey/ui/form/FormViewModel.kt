@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.medmission.survey.data.model.MedicalHistoryItem
 import com.medmission.survey.data.model.Symptom
+import com.medmission.survey.data.model.Gender
 import com.medmission.survey.data.model.SurveyRecord
 import com.medmission.survey.data.model.isUntouched
 import com.medmission.survey.data.repository.SurveyRepository
@@ -40,6 +41,8 @@ class FormViewModel(
             // saying so. Showing today here puts the same value in front of the
             // operator, where the age beside it reads 0 and asks to be corrected.
             birthDate = if (recordId == null) todayLocalDateString() else null,
+            // Matching the console's own NEW STUDY screen, which starts on Male.
+            gender = if (recordId == null) Gender.MALE else null,
         ),
     )
     val record: StateFlow<SurveyRecord> = _record.asStateFlow()

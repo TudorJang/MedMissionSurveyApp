@@ -245,4 +245,39 @@ class FormViewModelTest {
 
         assertEquals(setOf(com.medmission.survey.data.model.Symptom.COUGH), viewModel.record.first().symptoms)
     }
+
+    @Test
+    fun `leaving a form where only the gender was answered keeps the record`() =
+        runTest(testDispatcher) {
+            val repository: SurveyRepository = mock()
+            whenever(repository.countAll()).thenReturn(0)
+            val viewModel = FormViewModel(repository, recordId = null, country = "PH")
+            advanceUntilIdle()
+
+            viewModel.updateField { it.copy(gender = Gender.FEMALE) }
+            advanceUntilIdle()
+
+            var left = false
+            viewModel.discardIfUntouched { left = true }
+            advanceUntilIdle()
+
+            assertTrue(left)
+            verify(repository, never()).discardIfUntouched(any())
+        }
+
+    @Test
+    fun `leaving a form nobody touched takes the placeholder row with it`() =
+        runTest(testDispatcher) {
+            val repository: SurveyRepository = mock()
+            whenever(repository.countAll()).thenReturn(0)
+            val viewModel = FormViewModel(repository, recordId = null, country = "PH")
+            advanceUntilIdle()
+
+            var left = false
+            viewModel.discardIfUntouched { left = true }
+            advanceUntilIdle()
+
+            assertTrue(left)
+            verify(repository).discardIfUntouched(any())
+        }
 }
