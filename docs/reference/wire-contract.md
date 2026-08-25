@@ -73,6 +73,7 @@ markers only. They are not in the data model and never appear in this payload.
     "city": "Manila",
     "barangay": "Ermita",
     "zip": "1000",
+    "country": "PH",
     "email": "juan@example.com",
     "cellPhone": "+63-900-000-0000",
     "maritalStatus": "OTHER",
@@ -135,7 +136,9 @@ Every field is optional; the app never blocks send on a missing value.
 | `date` | String — ISO-8601 `YYYY-MM-DD`, machine-generated, always valid (see §6) |
 | `patient.firstName`, `.lastName`, `.city`, `.zip`, `.email`, `.cellPhone` | String |
 | `patient.address` | String — as of the PSGC address hierarchy feature, holds only street/subdivision/landmark text, not a full address. The complete address is `address` + `barangay` + `city` + `province` + `region` combined; this field previously held the complete free-text address. |
-| `patient.region`, `.province`, `.barangay` | String — PSA official name from the bundled PSGC dataset, or an arbitrary free-text string if "Not listed" was chosen on the tablet. `.province` is absent for addresses in NCR (no province level exists there). |
+| `patient.region`, `.province`, `.barangay` | String — PSA official name from the bundled PSGC dataset, or an arbitrary free-text string if "Not listed" was chosen on the tablet. `.province` is absent for addresses in NCR (no province level exists there). **In the global form these two are absent entirely**: `region` and `barangay` are Philippine units, and `.province` holds whatever was typed in State/Province. |
+| `patient.country` | String — ISO 3166-1 alpha-2, e.g. `"PH"`, `"VN"`. Present when the tablet is on the global form, which asks the operator which country the site is in; absent from a Philippine-form tablet, and the laptop's own site setting stands in. Never asked per patient. |
+| `patient.cellPhone` | String — **E.164 on the wire** (`"+639171234567"`), whatever grouping the field showed while it was typed. A number that cannot be parsed for the country is sent exactly as typed rather than dropped. |
 | `patient.birthDate` | String — ISO-8601 `YYYY-MM-DD` shape; may be partial or invalid, parse-or-ignore (see §6) |
 | `patient.age` | Int |
 | `patient.gender`, `.maritalStatus` | String enum — see §5 |
