@@ -19,4 +19,10 @@ data class PsgcHierarchy(
     val citiesByParent: Map<PsgcPath, List<String>>,
     /** Keyed by a path with barangay null. */
     val barangaysByCity: Map<PsgcPath, List<String>>,
+    /**
+     * The postal district a barangay belongs to, keyed by city and barangay name. PSA
+     * publishes it only where a city has sub-municipalities — Manila, in practice — and
+     * it is what lets a numbered barangay find a ZIP the name lookup cannot reach.
+     */
+    val districtByBarangay: Map<Pair<String, String>, String> = emptyMap(),
 )

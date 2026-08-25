@@ -23,10 +23,25 @@ city first, then barangay (`PsgcParser.findZip`). Two measured gaps, kept
 deliberately unfixed — the ZIP field in the form is editable precisely so
 an operator can fill these in by hand:
 
-- **Manila, Caloocan and Pasay resolve no ZIP at all.** Their barangays
-  are numbered ("Barangay 1", …), which matches nothing, and their PSGC
-  city names ("City Of Manila") don't match the ZIP dataset's naming
-  ("Manila CPO - Ermita", per-district entries).
+- **Caloocan and Pasay resolve no ZIP at all.** Their barangays are
+  numbered ("Barangay 1", …), which matches nothing, and their PSGC city
+  names don't match the ZIP dataset's naming either. Neither city carries
+  sub-municipality data, so the Manila route below is not available to
+  them.
+- **Manila is now partly covered** (`MANILA_DISTRICT_ZIPS` in
+  `PsgcParser`). PSA publishes a postal district for each of its 897
+  barangays and the ZIP dataset ships one entry per district, so the two
+  are joined by a hand-written table of ten districts — Ermita 1000,
+  Quiapo 1001, Intramuros 1002, Malate 1004, San Miguel 1005, Binondo
+  1006, Paco 1007, Sta. Ana 1009, San Nicolas 1010, Pandacan 1011 — each
+  quoted from the dataset entry it came from. 308 barangays resolve where
+  none did before.
+  Four districts are deliberately left out because the post office splits
+  them and PSA does not: Sampaloc (1008 east / 1015 west), Sta. Cruz
+  (1014 north / 1003 south), Tondo I/II (1013 north / 1012 south) and
+  Port Area (the dataset's only entry is "Port Area (South)"). Picking one
+  half would be right about half the time and wrong invisibly the rest;
+  those barangays stay blank for the operator to fill.
 - **Do not "fix" this with a subMunicipality fallback.** It looks
   promising — Manila's 897 barangay nodes all carry a `subMunicipality`
   key (Ermita, Tondo, …) — but it was measured against the bundled

@@ -28,7 +28,12 @@ class PsgcRepository(private val context: Context) {
     fun barangays(region: String, province: String?, city: String): List<String> =
         hierarchy.barangaysByCity[PsgcPath(region, province, city)].orEmpty()
 
-    fun zip(city: String, barangay: String?): String? = findZip(zipByName, city, barangay)
+    /** The postal district a barangay sits in, where PSA publishes one. Test seam. */
+    fun districtOfForTest(city: String, barangay: String): String? =
+        hierarchy.districtByBarangay[city to barangay]
+
+    fun zip(city: String, barangay: String?): String? =
+        findZip(zipByName, city, barangay) { c, b -> hierarchy.districtByBarangay[c to b] }
 
     /**
      * Forces both `by lazy` datasets to parse now, on whatever thread this is called from.
