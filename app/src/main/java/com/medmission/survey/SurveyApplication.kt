@@ -53,7 +53,7 @@ class SurveyApplication : Application(), Configuration.Provider {
             // number is sent as typed rather than dropped — a wrong-looking number an
             // operator can still read beats no number at all.
             normalisePhone = { typed, country ->
-                phoneFormatter.toE164(typed, country ?: appSettings.countryCode) ?: typed
+                phoneFormatter.toE164(typed, country ?: appSettings.effectiveCountryCode) ?: typed
             },
         )
     }

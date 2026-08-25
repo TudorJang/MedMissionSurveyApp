@@ -42,6 +42,19 @@ class AppSettings(context: Context) {
             ?: Countries.DEFAULT_CODE
         set(value) = prefs.edit().putString(KEY_COUNTRY, value).apply()
 
+    /**
+     * The country a record is actually being collected in.
+     *
+     * The stored [countryCode] belongs to the global form and survives a switch back to
+     * the Philippine one, so reading it directly stamps the last global country onto
+     * Philippine records — a tablet used in Vietnam and then brought home filed Manila
+     * addresses as Vietnamese, and their phone numbers stopped normalising because they
+     * were being parsed under the wrong country's rules. The Philippine form is only
+     * ever collecting Philippine addresses, so it says so.
+     */
+    val effectiveCountryCode: String
+        get() = if (formMode == FormMode.PHILIPPINES) Countries.DEFAULT_CODE else countryCode
+
     private companion object {
         const val KEY_FORM_MODE = "formMode"
         const val KEY_COUNTRY = "countryCode"

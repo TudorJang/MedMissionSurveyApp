@@ -66,7 +66,7 @@ fun SurveyNavGraph(navController: NavHostController = rememberNavController()) {
                 factory = viewModelFactory {
                     initializer {
                         FormViewModel(app.surveyRepository, recordId, app.devicePrefix,
-                            country = app.appSettings.countryCode)
+                            country = app.appSettings.effectiveCountryCode)
                     }
                 },
             )
@@ -85,7 +85,7 @@ fun SurveyNavGraph(navController: NavHostController = rememberNavController()) {
                 // The global form formats numbers for the country being screened; the
                 // Philippine form keeps the mask it has always had.
                 formatPhone = if (app.appSettings.formMode == FormMode.GLOBAL) {
-                    { typed -> app.phoneFormatter.formatAsYouType(typed, app.appSettings.countryCode) }
+                    { typed -> app.phoneFormatter.formatAsYouType(typed, app.appSettings.effectiveCountryCode) }
                 } else ::formatCellPhoneInput,
             )
         }
