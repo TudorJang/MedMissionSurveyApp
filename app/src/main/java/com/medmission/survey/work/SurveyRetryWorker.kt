@@ -32,14 +32,24 @@ class SurveyRetryWorker(
         private const val WORK_NAME = "survey_retry_worker"
 
         fun enqueuePeriodic(context: Context) {
+            // NetworkType.CONNECTED means a network Android has validated as reaching the
+            // internet. A screening site's access point has no upstream — Android shows
+            // "connected, no internet" — so the constraint is never satisfied and every
+            // PENDING survey waits while the laptop sits two metres away answering. What
+            // matters here is reaching that laptop, which has nothing to do with the
+            // internet, and an unreachable one already costs only a connect timeout. So
+            // the worker runs regardless and lets the send decide.
             val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
                 .build()
             val request = PeriodicWorkRequestBuilder<SurveyRetryWorker>(15, TimeUnit.MINUTES)
                 .setConstraints(constraints)
                 .build()
+            // UPDATE rather than KEEP: a tablet upgraded from an earlier build already
+            // has the old request enqueued, and KEEP would leave it on the constraint
+            // above — the tablets that need this fix most would never get it.
             WorkManager.getInstance(context)
-                .enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request)
+                .enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
         }
     }
 }

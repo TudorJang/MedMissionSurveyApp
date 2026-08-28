@@ -45,6 +45,13 @@ class OkHttpSurveyApiClient(
                 }
             } catch (e: IOException) {
                 Result.failure(e)
+            } catch (e: IllegalArgumentException) {
+                // An address the operator typed by hand off the laptop's screen: a
+                // scheme in the host field, a trailing space, a port out of range.
+                // OkHttp rejects those when the URL is built, and an unhandled throw
+                // here used to take the app down with the survey still unsent. It is a
+                // failure to reach the laptop like any other, so it is reported as one.
+                Result.failure(IOException("This laptop address cannot be used: $baseUrl", e))
             }
         }
 
@@ -75,6 +82,11 @@ class OkHttpSurveyApiClient(
                 Result.failure(e)
             } catch (e: kotlinx.serialization.SerializationException) {
                 Result.failure(IOException("Unparseable status response", e))
+            } catch (e: IllegalArgumentException) {
+                // Same hand-typed address as in sendSurvey. This one runs on a 30-second
+                // loop behind the home screen, so an unhandled throw here takes the app
+                // down while the operator is looking at their list of surveys.
+                Result.failure(IOException("This laptop address cannot be used: $baseUrl", e))
             }
         }
 }

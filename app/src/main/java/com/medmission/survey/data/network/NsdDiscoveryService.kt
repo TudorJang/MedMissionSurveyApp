@@ -35,13 +35,21 @@ class AndroidNsdDiscoveryService(private val context: Context) : NsdDiscoverySer
             }
         }
 
+        // Whether NsdManager actually took the listener. Stopping a discovery that never
+        // started throws IllegalArgumentException, and that throw comes out of awaitClose
+        // on the send screen — where discovery failing to start is ordinary: Wi-Fi is
+        // toggling, or a discovery for this same service type is still running from the
+        // last time the screen was opened and left.
+        var started = false
+
         val discoveryListener = object : NsdManager.DiscoveryListener {
-            override fun onDiscoveryStarted(serviceType: String) = Unit
+            override fun onDiscoveryStarted(serviceType: String) { started = true }
             override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
+                started = false
                 close()
             }
-            override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) = Unit
-            override fun onDiscoveryStopped(serviceType: String) = Unit
+            override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) { started = false }
+            override fun onDiscoveryStopped(serviceType: String) { started = false }
             override fun onServiceFound(serviceInfo: NsdServiceInfo) {
                 nsdManager.resolveService(serviceInfo, newResolveListener())
             }
@@ -53,6 +61,10 @@ class AndroidNsdDiscoveryService(private val context: Context) : NsdDiscoverySer
 
         nsdManager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, discoveryListener)
 
-        awaitClose { nsdManager.stopServiceDiscovery(discoveryListener) }
+        awaitClose {
+            // runCatching as well as the flag: the two callbacks race with this teardown,
+            // and losing the discovery is never worth taking the screen down for.
+            if (started) runCatching { nsdManager.stopServiceDiscovery(discoveryListener) }
+        }
     }
 }

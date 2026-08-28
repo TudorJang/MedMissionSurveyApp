@@ -79,7 +79,19 @@ class SurveyRepository(
                 IllegalStateException("Laptop endpoint not found: $laptopId"),
             )
 
-        val payload = SurveyPayloadMapper.toDto(record, normalisePhone)
+        // The intent to send goes on disk before the wire is touched. This runs in the
+        // send screen's scope, which dies when the operator presses Back, when the screen
+        // times out, or when Android reaps the backgrounded app — all of them easy while
+        // the tablet waits out a connect timeout on a sleeping laptop. A record still
+        // DRAFT at that moment is never picked up again, because the retry worker only
+        // looks at PENDING. Claimed first, an interruption costs a retry rather than the
+        // patient.
+        val claimed = record.copy(status = SyncStatus.PENDING, targetLaptopId = laptopId)
+        if (record.status != claimed.status || record.targetLaptopId != laptopId) {
+            surveyDao.upsert(claimed)
+        }
+
+        val payload = SurveyPayloadMapper.toDto(claimed, normalisePhone)
         val baseUrl = "http://${endpoint.host}:${endpoint.port}"
         // Each bridge generates its own key, so the endpoint's key wins; the
         // build-time one only covers endpoints saved before a key was entered.
@@ -87,10 +99,9 @@ class SurveyRepository(
 
         return if (result.isSuccess) {
             surveyDao.upsert(
-                record.copy(
+                claimed.copy(
                     status = SyncStatus.SENT,
                     sentAt = System.currentTimeMillis(),
-                    targetLaptopId = laptopId,
                 )
             )
             Result.success(Unit)
@@ -98,8 +109,8 @@ class SurveyRepository(
             val cause = result.exceptionOrNull() ?: IOException("Unknown send error")
             // A rejected key cannot come good on its own. Retrying it ten times only
             // delays the moment someone notices and fixes the key on this laptop.
-            if (cause is UnauthorizedException) recordRejectedKey(record, laptopId, cause)
-            else recordFailedAttempt(record, laptopId, cause)
+            if (cause is UnauthorizedException) recordRejectedKey(claimed, laptopId, cause)
+            else recordFailedAttempt(claimed, laptopId, cause)
         }
     }
 
