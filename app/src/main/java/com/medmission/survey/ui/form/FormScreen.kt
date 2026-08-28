@@ -418,13 +418,13 @@ fun FormScreen(
             SectionCard(title = "Vital Signs") {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     DoubleFieldRow(
-                        label = "Height",
+                        label = "Height (cm)",
                         value = record.height,
                         onValueChange = { v -> onFieldChange { it.copy(height = v) } },
                         modifier = Modifier.weight(1f),
                     )
                     DoubleFieldRow(
-                        label = "Weight",
+                        label = "Weight (kg)",
                         value = record.weight,
                         onValueChange = { v -> onFieldChange { it.copy(weight = v) } },
                         modifier = Modifier.weight(1f),
@@ -437,14 +437,14 @@ fun FormScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IntFieldRow(
-                        label = "Systolic",
+                        label = "Systolic (mmHg)",
                         value = record.bpSystolic,
                         onValueChange = { v -> onFieldChange { it.copy(bpSystolic = v) } },
                         modifier = Modifier.weight(1f),
                     )
                     Text("/", style = MaterialTheme.typography.titleMedium)
                     IntFieldRow(
-                        label = "Diastolic",
+                        label = "Diastolic (mmHg)",
                         value = record.bpDiastolic,
                         onValueChange = { v -> onFieldChange { it.copy(bpDiastolic = v) } },
                         modifier = Modifier.weight(1f),
@@ -452,13 +452,13 @@ fun FormScreen(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     IntFieldRow(
-                        label = "Pulse Rate",
+                        label = "Pulse Rate (bpm)",
                         value = record.pulseRate,
                         onValueChange = { v -> onFieldChange { it.copy(pulseRate = v) } },
                         modifier = Modifier.weight(1f),
                     )
                     IntFieldRow(
-                        label = "Respiratory Rate",
+                        label = "Respiratory Rate (breaths/min)",
                         value = record.respiratoryRate,
                         onValueChange = { v -> onFieldChange { it.copy(respiratoryRate = v) } },
                         modifier = Modifier.weight(1f),
@@ -466,20 +466,20 @@ fun FormScreen(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     DoubleFieldRow(
-                        label = "Temperature",
+                        label = "Temperature (°C)",
                         value = record.temperature,
                         onValueChange = { v -> onFieldChange { it.copy(temperature = v) } },
                         modifier = Modifier.weight(1f),
                     )
                     DoubleFieldRow(
-                        label = "Oxygen Saturation",
+                        label = "Oxygen Saturation (%)",
                         value = record.oxygenSaturation,
                         onValueChange = { v -> onFieldChange { it.copy(oxygenSaturation = v) } },
                         modifier = Modifier.weight(1f),
                     )
                 }
                 DoubleFieldRow(
-                    label = "Blood Glucose",
+                    label = "Blood Glucose (mg/dL)",
                     value = record.bloodGlucose,
                     onValueChange = { v -> onFieldChange { it.copy(bloodGlucose = v) } },
                 )

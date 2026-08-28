@@ -145,8 +145,8 @@ Every field is optional; the app never blocks send on a missing value.
 | `patient.maritalStatusOther` | String — only meaningful when `maritalStatus` is `OTHER`; the app clears it whenever `maritalStatus` changes away from `OTHER` |
 | `medicalHistory.items` | Array of String enum — see §5 |
 | `medicalHistory.others`, `.recentSurgeriesOrHospitalization`, `.currentMedication` | String |
-| `vitalSigns.height`, `.weight`, `.temperature`, `.oxygenSaturation`, `.bloodGlucose` | Double |
-| `vitalSigns.bpSystolic`, `.bpDiastolic`, `.pulseRate`, `.respiratoryRate` | Int |
+| `vitalSigns.height`, `.weight`, `.temperature`, `.oxygenSaturation`, `.bloodGlucose` | Double — in cm, kg, °C, percent and mg/dL. The units are not carried on the wire; they are the ones the form asks for, printed on each field's label, and the bridge writes them into the readable summary. |
+| `vitalSigns.bpSystolic`, `.bpDiastolic`, `.pulseRate`, `.respiratoryRate` | Int — in mmHg, mmHg, beats/min and breaths/min |
 | `symptoms` | Array of String enum — see §5. Always present, may be `[]` |
 | `tbInfo.everDiagnosedTB`, `.everReceivedTreatment`, `.treatmentCompleted`, `.closeContactActiveTB`, `.householdMemberTBTreatment` | String enum — see §5 |
 | `tbInfo.diagnosisYear` | String — digits only, up to 4 characters (e.g. `"2015"`) |
