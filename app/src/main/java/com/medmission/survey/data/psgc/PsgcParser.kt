@@ -70,18 +70,33 @@ fun parsePsgcHierarchy(root: JsonObject): PsgcHierarchy {
         districtByBarangay)
 }
 
+/**
+ * Names to postcodes, keeping only the names that mean one place.
+ *
+ * The postcode file is keyed by name with no province or region to scope it, and
+ * Philippine place names repeat across the country — San Nicolas, San Isidro, Santa Cruz,
+ * Poblacion. Taking the first entry met meant a patient in Ilocos Norte could be given a
+ * Manila postcode: it looks authoritative on screen, so nobody corrects it, and it travels
+ * into the address the console reads.
+ *
+ * So an ambiguous name resolves to nothing and the operator types the postcode, which is
+ * the same answer this file already reaches for Manila's shared districts a few lines
+ * above: a blank is visible and a wrong postcode in a medical record is not.
+ */
 fun parseZipByName(root: JsonObject): Map<String, String> {
-    val result = mutableMapOf<String, String>()
+    val zipsByName = mutableMapOf<String, MutableSet<String>>()
     for ((zip, value) in root) {
         val names = when (value) {
             is JsonArray -> value.map { it.jsonPrimitive.content }
             else -> listOf(value.jsonPrimitive.content)
         }
         for (name in names) {
-            result.putIfAbsent(name, zip)
+            zipsByName.getOrPut(name) { mutableSetOf() } += zip
         }
     }
-    return result
+    return zipsByName
+        .filterValues { it.size == 1 }
+        .mapValues { (_, zips) -> zips.first() }
 }
 
 /**

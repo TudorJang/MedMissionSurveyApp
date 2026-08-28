@@ -2,6 +2,7 @@ package com.medmission.survey.data.psgc
 
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -44,16 +45,27 @@ class PsgcRepositoryTest {
     }
 
     @Test
-    fun `Taytay resolves to ZIP 1920`() {
-        assertEquals("1920", repository.zip(city = "Taytay", barangay = null))
+    fun `a city whose name means one place resolves to its ZIP`() {
+        assertEquals("1900", repository.zip(city = "Cainta", barangay = null))
+    }
+
+    /**
+     * Taytay is a municipality in Rizal (1920) and another in Palawan (5312), and the
+     * postcode dataset is keyed by name alone — no province, no region. 133 of its 1720
+     * names are shared this way, "San Isidro" across eleven postcodes. Picking one looked
+     * authoritative on screen, so nobody corrected it, and it rode into the patient's
+     * DICOM address.
+     */
+    @Test
+    fun `a city name shared by two provinces leaves the ZIP for the operator to type`() {
+        assertNull(repository.zip(city = "Taytay", barangay = null))
     }
 
     @Test
     fun `a barangay name that collides with another city's ZIP entry does not override its own city's ZIP`() {
-        // "San Isidro" exists as a barangay in many cities and matches an unrelated
-        // Quezon City entry (1113) in the ZIP dataset. City-first precedence must keep
-        // Taytay's own ZIP. This pins the real-dataset behavior end-to-end; the same
+        // "San Isidro" exists as a barangay in many cities and is ambiguous in the ZIP
+        // dataset. City-first precedence must keep the city's own ZIP; the same
         // precedence is unit-tested with fixtures in ZipParserTest.
-        assertEquals("1920", repository.zip(city = "Taytay", barangay = "San Isidro"))
+        assertEquals("1900", repository.zip(city = "Cainta", barangay = "San Isidro"))
     }
 }
