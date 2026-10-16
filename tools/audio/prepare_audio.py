@@ -27,11 +27,13 @@ recording never leaves the computer. The model is downloaded once from the
 k2-fsa/sherpa-onnx GitHub releases into ~/.cache/prepare_audio (--model-dir or
 the PREPARE_AUDIO_MODELS environment variable put it elsewhere).
 
-On 4 CPU cores a 53-minute recording took 11 minutes with whisper-turbo
-(about 2.3 GB of memory) and 76 seconds with sense-voice (about 0.4 GB).
+On 4 CPU cores whisper-turbo took 12 minutes for a 53-minute test recording and
+15 minutes for a 51-minute meeting (up to 2.4 GB of memory); sense-voice took
+1.5 to 2 minutes (about 0.45 GB).
 """
 
 import argparse
+import atexit
 import base64
 import contextlib
 import importlib.util
@@ -60,13 +62,20 @@ MB = 1000 * 1000
 SAMPLE_RATE = 16000
 MAX_KBPS, MIN_KBPS = 32, 16
 
-# Utterances are cut into pieces of at most 10 s. Whisper writes each piece in one
-# language and, where two people talk quickly, can follow one voice and leave out
-# the other; with 28 s pieces whole sentences went missing.
-MAX_PIECE_SECONDS = 10
-# Whisper sometimes repeats the end of a piece into the silence after it
-# ("부모. 부모. 부모. ..."); three or more repeats in a row are written once.
-REPEATS = re.compile(r"(\w.{2,}?)(?:\s*\1){2,}")
+# Utterances are cut into pieces of at most this many seconds. Whisper writes each piece
+# in one language, and in quick Korean-English turn-taking, long pieces lost whole
+# sentences of one language. In a meeting held in one language, though, 10 s pieces
+# lost and garbled more than 20 s ones, and sometimes came out in Japanese or Chinese.
+# So Whisper gets 20 s pieces until 15 s of speech have come out in a second language,
+# and 10 s pieces from then on. SenseVoice keeps 10 s pieces: with 20 s ones it dropped
+# sentences from continuous speech in the tests.
+LONG_PIECE_SECONDS, SHORT_PIECE_SECONDS = 20, 10
+SECOND_LANGUAGE_SECONDS = 15
+# Whisper sometimes repeats a phrase or a whole sentence until sherpa-onnx's limit of
+# 6 tokens per second of input stops it ("부모. 부모. 부모. ..."). Only in such a piece
+# is a phrase repeated in a row written once: elsewhere a repeat was said ("Pain, pain,
+# pain"), and a unit starting with a digit is never touched ("10,000,000,000").
+REPEATS = re.compile(r"((?![\d_])\w.{2,}?)(?:\s*\1)+")
 # Audio kept on either side of what the voice detector marks as speech, which
 # it trims so closely that word beginnings and endings were lost.
 CONTEXT_SECONDS = 0.25
@@ -98,8 +107,8 @@ MODELS = {
         "files": ["turbo-encoder.int8.onnx", "turbo-decoder.int8.onnx", "turbo-tokens.txt"],
         "download_mb": 564, "disk_mb": 1040,
         "languages": WHISPER_LANGUAGES | {"yue"},
-        "about": "Default. Best Korean accuracy measured. About 12 minutes per hour of "
-                 "audio on 4 CPU cores, 2.3 GB of memory, 564 MB download.",
+        "about": "Default. Best Korean accuracy measured. About 14 to 18 minutes per hour "
+                 "of audio on 4 CPU cores, up to 2.4 GB of memory, 564 MB download.",
     },
     "sense-voice": {
         "kind": "sense-voice",
@@ -107,7 +116,7 @@ MODELS = {
         "files": ["model.int8.onnx", "tokens.txt"],
         "download_mb": 163, "disk_mb": 240,
         "languages": {"ko", "en", "zh", "ja", "yue"},
-        "about": "Fast: about 1.5 minutes per hour of audio, 0.4 GB of memory, 163 MB "
+        "about": "Fast: about 2 minutes per hour of audio, 0.45 GB of memory, 163 MB "
                  "download. Korean, English, Chinese, Japanese and Cantonese only, and "
                  "Korean words sometimes get a stray space inside them.",
     },
@@ -345,9 +354,11 @@ class Media:
         if len(self.audio) == 1:
             return ["-map", "0:a:0"]
         # A screen recording can have a silent first track and the microphone in the second.
+        # The mix is made mono here because -rematrix_maxval (see encode) does not reach
+        # a -filter_complex graph, and two loud stereo tracks clipped.
         tracks = "".join(f"[0:a:{i}]" for i in range(len(self.audio)))
-        return ["-filter_complex", f"{tracks}amix=inputs={len(self.audio)}[speech]",
-                "-map", "[speech]"]
+        return ["-filter_complex", f"{tracks}amix=inputs={len(self.audio)},aresample="
+                "rematrix_maxval=1,aformat=channel_layouts=mono[speech]", "-map", "[speech]"]
 
     def tracks_note(self):
         if len(self.audio) > 1:
@@ -399,7 +410,8 @@ def plan_shrink(duration, max_bytes, min_parts=1):
 def encode(media, tmp, kbps, parts):
     args = media.input() + media.speech() + [
         "-map_chapters", "-1", "-c:a", "aac", "-b:a", f"{kbps}k", "-ac", "1",
-        # Without this, stereo is summed into mono about 3 dB louder and loud recordings clip.
+        # Without this, stereo is summed into mono about 3 dB louder and loud recordings
+        # clip. It covers one track; speech() makes a mix of several mono itself.
         "-rematrix_maxval", "1.0", "-ar", str(SAMPLE_RATE)]
     if parts == 1:
         args.append(str(tmp / "out.m4a"))
@@ -703,11 +715,20 @@ class WhisperTokens:
                 self.bytes[int(fields[1])] = base64.b64decode(fields[0])
         self.path = tokens_path.with_name("id-tokens.txt")
         if not self.path.exists():
-            part = self.path.with_name(self.path.name + ".part")
-            with open(part, "w", encoding="ascii", newline="\n") as out:
-                for i in sorted(self.bytes):
-                    out.write(base64.b64encode(f"\x01{i}\x02".encode()).decode() + f" {i}\n")
-            os.replace(part, self.path)
+            try:
+                self.write(self.path)
+            except OSError:
+                # A read-only model folder. The file is only read while the model loads.
+                self.path = Path(tempfile.gettempdir()) / f"prepare_audio-{os.getpid()}-tokens.txt"
+                self.write(self.path)
+                atexit.register(self.path.unlink)
+
+    def write(self, path):
+        part = path.with_name(path.name + ".part")
+        with open(part, "w", encoding="ascii", newline="\n") as out:
+            for i in sorted(self.bytes):
+                out.write(base64.b64encode(f"\x01{i}\x02".encode()).decode() + f" {i}\n")
+        os.replace(part, path)
 
     def __call__(self, text):
         ids = re.findall(r"\x01(\d+)\x02", text)
@@ -716,14 +737,25 @@ class WhisperTokens:
 
 
 def decode(recognizer, samples):
+    """Returns the text and the language the recognizer found in SAMPLES."""
     stream = recognizer.create_stream()
     stream.accept_waveform(SAMPLE_RATE, samples)
     recognizer.decode_stream(stream)
-    return stream.result.text
+    return stream.result.text, stream.result.lang
+
+
+def quietest(samples, low, high):
+    """The middle of the quietest tenth of a second in SAMPLES[LOW:HIGH]."""
+    import numpy as np
+
+    frame = SAMPLE_RATE // 10
+    high = low + (high - low) // frame * frame
+    energy = (samples[low:high].reshape(-1, frame) ** 2).sum(axis=1)
+    return low + int(np.argmin(energy)) * frame + frame // 2
 
 
 def load_recognizer(name, folder, language, threads):
-    """Returns a function that turns the samples of one utterance into text."""
+    """Returns a function that turns the samples of one piece into (text, language)."""
     import numpy as np
     import sherpa_onnx
 
@@ -735,15 +767,35 @@ def load_recognizer(name, folder, language, threads):
             encoder=files[0], decoder=files[1], tokens=native_path(tokens.path),
             language=language, task="transcribe", num_threads=threads)
 
-        def recognize(samples):
+        def whisper(samples):
             # sherpa-onnx lets Whisper write 6 tokens per second of input, and fast Korean
             # needs about that many, so sentence endings were cut off ("...드시고 계").
             # Silence to one and a half times the length lifts the cap to 9. Twice the
             # length left room for repeating a sentence over and over, and padding to the
-            # full 30 s window made Whisper leave out one of two speakers.
-            padded = np.zeros(len(samples) * 3 // 2, np.float32)
+            # full 30 s window made Whisper leave out one of two speakers. Past 29.5 s
+            # sherpa-onnx drops the input, so a 20 s piece gets 29 s.
+            padded = np.zeros(min(len(samples) * 3 // 2, max(len(samples), 29 * SAMPLE_RATE)),
+                              np.float32)
             padded[:len(samples)] = samples
-            return REPEATS.sub(r"\1", tokens(decode(recognizer, padded)))
+            marked, found = decode(recognizer, padded)
+            text, count = tokens(marked), marked.count("\x02")
+            if count >= len(padded) * 6 // SAMPLE_RATE - 1:  # it ran into the limit
+                text = REPEATS.sub(r"\1", text)
+            return text, count, found
+
+        def recognize(samples):
+            text, count, found = whisper(samples)
+            seconds = len(samples) / SAMPLE_RATE
+            if seconds >= 4 and count < 0.8 * seconds:
+                # Now and then Whisper writes next to nothing for a long stretch of speech
+                # ("-" for 10 s, "감사합니다." for 14 s), and each half on its own came out
+                # whole. The halves are kept only if they hold real text, not "you".
+                half = len(samples) // 2
+                cut = quietest(samples, half - 2 * SAMPLE_RATE, half + 2 * SAMPLE_RATE)
+                (first, n, _), (second, m, _) = whisper(samples[:cut]), whisper(samples[cut:])
+                if n + m >= 1.5 * seconds:
+                    text = first.strip() + " " + second.strip()
+            return text, found
         return recognize
     if model["kind"] == "sense-voice":
         recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
@@ -760,23 +812,27 @@ class DecodeError(Exception):
     pass
 
 
-def pieces(start, samples):
-    """Cuts an utterance longer than MAX_PIECE_SECONDS at the quietest tenth of a second in
-    its last 6 s, so the cut seldom falls inside a word. Yields (start sample, samples)."""
-    import numpy as np
-
-    limit, search, frame = MAX_PIECE_SECONDS * SAMPLE_RATE, 6 * SAMPLE_RATE, SAMPLE_RATE // 10
-    while len(samples) > limit:
-        energy = (samples[limit - search:limit].reshape(-1, frame) ** 2).sum(axis=1)
-        cut = limit - search + int(np.argmin(energy)) * frame + frame // 2
-        yield start, samples[:cut]
+def pieces(start, samples, limit):
+    """Cuts an utterance longer than LIMIT[0] seconds into as few pieces as will do, of
+    about equal length: each cut is at the quietest tenth of a second within 2 s of where
+    an even split would fall, so it seldom falls inside a word. Cut near the limit
+    instead, a 22 s utterance gave pieces of 19 and 3 s, and sentences went missing from
+    the long one. LIMIT is read before every cut, as it can change while the utterance
+    is decoded. Yields (start seconds, samples)."""
+    while len(samples) > limit[0] * SAMPLE_RATE:
+        end = limit[0] * SAMPLE_RATE
+        even = len(samples) // math.ceil(len(samples) / end)
+        cut = quietest(samples, max(even - 2 * SAMPLE_RATE, 4 * SAMPLE_RATE),
+                       min(even + 2 * SAMPLE_RATE, end))
+        yield start / SAMPLE_RATE, samples[:cut]
         start, samples = start + cut, samples[cut:]
-    yield start, samples
+    yield start / SAMPLE_RATE, samples
 
 
-def speech_segments(media, vad_path, progress):
-    """Yields (start seconds, samples) for each utterance silero VAD finds, decoding through
-    ffmpeg a little at a time so hours of audio never sit in memory at once."""
+def speech_segments(media, vad_path, progress, limit):
+    """Yields (start seconds, samples) for each utterance silero VAD finds, cut into pieces
+    of at most LIMIT[0] seconds, decoding through ffmpeg a little at a time so hours of
+    audio never sit in memory at once."""
     import numpy as np
     import sherpa_onnx
 
@@ -817,9 +873,7 @@ def speech_segments(media, vad_path, progress):
                 before = recent[first - read + len(recent):start - read + len(recent)]
             after = recent[len(recent) - (read - end):][:context] if end < read else nothing
             last_end = end + len(after)
-            samples = np.concatenate([before, speech, after])
-            for piece_start, piece in pieces(first, samples):
-                yield piece_start / SAMPLE_RATE, piece
+            yield from pieces(first, np.concatenate([before, speech, after]), limit)
 
     decoder = subprocess.Popen(
         [FFMPEG, "-nostdin", "-v", "error", *media.input(), *media.speech(),
@@ -858,7 +912,30 @@ def transcript_paths(source, out_dir):
     return folder / (source.stem + ".txt"), folder / (source.stem + ".srt")
 
 
-def transcribe_file(media, out_dir, recognize, vad_path):
+def loudness(samples):
+    return 10 * math.log10(float((samples.astype("float64") ** 2).mean()) + 1e-12)
+
+
+def rejoins(held, start, samples, language, limit):
+    """Whether a piece is decoded again together with the piece before it, HELD.
+
+    A quarter-second pause ends an utterance, so that a sentence and the reply to it in
+    another language stay apart. But such pauses fall inside sentences too, and Whisper
+    finished a half on its own with words never said or with wrong numbers ("하루 3번
+    7일 동안" came out as "8, 3, 3, 7, 2 동안"). So two pieces in the same language at
+    most 0.3 s apart, one of them under 3 s, are decoded again as one, once. Not when one
+    is over 10 dB louder: Whisper then left out the quieter voice."""
+    first, before, _, before_language, joined = held
+    gap = round((start - first) * SAMPLE_RATE) - len(before)
+    return (not joined and language == before_language and gap <= 0.3 * SAMPLE_RATE
+            and min(len(before), len(samples)) < 3 * SAMPLE_RATE
+            and len(before) + gap + len(samples) <= limit * SAMPLE_RATE
+            and abs(loudness(before) - loudness(samples)) <= 10)
+
+
+def transcribe_file(media, out_dir, recognize, vad_path, longest):
+    import numpy as np
+
     source, duration = media.path, media.duration
     txt_path, srt_path = transcript_paths(source, out_dir)
     print(f"Transcribing {source.name} ({clock(duration)}) ...")
@@ -878,23 +955,50 @@ def transcribe_file(media, out_dir, recognize, vad_path):
                     f"  elapsed {clock(elapsed)}{eta}")
 
     lines = 0
+    limit = [longest]  # the longest piece in seconds; speech_segments reads it for every cut
+    heard = {}  # seconds of speech per language, from pieces of 2 s or more
+    held = None  # the last piece as (start, samples, text, language, joined), not yet written
+
+    def write(start, samples, text):
+        nonlocal lines
+        text = text.strip()
+        if not text:
+            return
+        lines += 1
+        end = start + len(samples) / SAMPLE_RATE
+        line = f"[{stamp(start)}] {text}"
+        txt.write(line + "\n")
+        srt.write(f"{lines}\n{srt_time(start)} --> {srt_time(end)}\n{text}\n\n")
+        txt.flush()
+        srt.flush()
+        status.clear()
+        print(line, flush=True)
+
     try:
         with open(txt_path, "w", encoding="utf-8") as txt, \
                 open(srt_path, "w", encoding="utf-8") as srt, \
-                contextlib.closing(speech_segments(media, vad_path, progress)) as segments:
-            for start, samples in segments:
-                text = recognize(samples).strip()
-                if not text:
-                    continue
-                lines += 1
-                end = start + len(samples) / SAMPLE_RATE
-                line = f"[{stamp(start)}] {text}"
-                txt.write(line + "\n")
-                srt.write(f"{lines}\n{srt_time(start)} --> {srt_time(end)}\n{text}\n\n")
-                txt.flush()
-                srt.flush()
-                status.clear()
-                print(line, flush=True)
+                contextlib.closing(speech_segments(media, vad_path, progress, limit)) as segments:
+            try:
+                for start, samples in segments:
+                    text, language = recognize(samples)
+                    if len(samples) >= 2 * SAMPLE_RATE:  # a cough came out as "you" in English
+                        heard[language] = heard.get(language, 0) + len(samples) / SAMPLE_RATE
+                        second = sorted(heard.values())[-2] if len(heard) > 1 else 0
+                        if second >= SECOND_LANGUAGE_SECONDS:
+                            limit[0] = SHORT_PIECE_SECONDS
+                    if held and rejoins(held, start, samples, language, limit[0]):
+                        gap = max(round((start - held[0]) * SAMPLE_RATE) - len(held[1]), 0)
+                        joined = np.concatenate([held[1], np.zeros(gap, np.float32), samples])
+                        joined_text, joined_language = recognize(joined)
+                        if joined_language == language:
+                            held = (held[0], joined, joined_text, language, True)
+                            continue
+                    if held:
+                        write(*held[:3])
+                    held = (start, samples, text, language, False)
+            finally:
+                if held:  # also when stopped part-way
+                    write(*held[:3])
     except (KeyboardInterrupt, DecodeError) as error:
         # Ctrl+C can reach ffmpeg before Python, which then shows up as a decode error.
         status.clear()
@@ -952,7 +1056,8 @@ def transcribe(args):
     shown = "ko only" if model["kind"] == "transducer" else language or "auto"
     print(f"Loading {args.model} (language: {shown}, {args.threads} threads) ...")
     recognize = load_recognizer(args.model, folder, language, args.threads)
-    written = [transcribe_file(media, out_dir, recognize, vad_path) for media in sources]
+    longest = LONG_PIECE_SECONDS if model["kind"] == "whisper" else SHORT_PIECE_SECONDS
+    written = [transcribe_file(media, out_dir, recognize, vad_path, longest) for media in sources]
     print("Attach " + ", ".join(p.name for p in written) + " to Claude.")
 
 
@@ -1031,11 +1136,12 @@ def main():
     transcribe_parser.add_argument(
         "--lang", default="auto",
         help="auto (default) detects the language of each stretch of speech between pauses "
-             "(at most 10 s) and writes the stretch in that one language, so when speakers "
-             "switch languages with hardly a pause a sentence can be left out or written in "
-             "the other language. Forcing ko makes Whisper turn English speech into Korean, "
-             "so use it only for recordings that are entirely Korean. Other codes: en, tl "
-             "(Tagalog, whisper models only, untested), ja, zh, ...")
+             "(at most 20 s; 10 s with sense-voice or once a second language has been heard) "
+             "and writes the stretch in that one language, so when speakers switch languages "
+             "with hardly a pause a sentence can be left out or written in the other language. "
+             "Forcing ko makes Whisper turn English speech into Korean, so use it only for "
+             "recordings that are entirely Korean. Other codes: en, tl (Tagalog, whisper "
+             "models only, untested), ja, zh, ...")
     transcribe_parser.add_argument("--out-dir", help="folder for the .txt and .srt "
                                                      "(default: next to the input)")
     transcribe_parser.add_argument("--threads", type=int,
