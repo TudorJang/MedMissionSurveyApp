@@ -396,7 +396,8 @@ def plan_shrink(duration, max_bytes, min_parts=1):
 def encode(media, tmp, kbps, parts):
     args = media.input() + media.speech() + [
         "-map_chapters", "-1", "-c:a", "aac", "-b:a", f"{kbps}k", "-ac", "1",
-        "-ar", str(SAMPLE_RATE)]
+        # Without this, stereo is summed into mono about 3 dB louder and loud recordings clip.
+        "-rematrix_maxval", "1.0", "-ar", str(SAMPLE_RATE)]
     if parts == 1:
         args.append(str(tmp / "out.m4a"))
     else:
@@ -637,7 +638,7 @@ def ensure_model(name, cache):
     folder = cache / name
     if model_is_ready(folder):
         return folder
-    folder.mkdir(parents=True, exist_ok=True)
+    writable(folder, "--model-dir")
     archive = folder / (model["archive"] + ".tar.bz2")
     need_mb = model["disk_mb"] + (0 if archive.exists() else model["download_mb"])
     free_mb = shutil.disk_usage(folder).free / MB
@@ -663,7 +664,7 @@ def ensure_model(name, cache):
 def ensure_vad(cache):
     path = cache / VAD_FILE
     if not path.exists():
-        cache.mkdir(parents=True, exist_ok=True)
+        writable(cache, "--model-dir")
         print(f"Downloading the voice activity detector (0.6 MB) into {cache}")
         download(RELEASES + VAD_FILE, path)
     return path
