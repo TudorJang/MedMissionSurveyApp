@@ -60,10 +60,13 @@ MB = 1000 * 1000
 SAMPLE_RATE = 16000
 MAX_KBPS, MIN_KBPS = 32, 16
 
-# Whisper hears at most 30 s at a time, and sherpa-onnx drops whatever is past
-# about 29.5 s with only a log line, so utterances are cut to 28 s pieces.
-MAX_PIECE_SECONDS = 28
-WHISPER_SECONDS = 29
+# Utterances are cut into pieces of at most 10 s. Whisper writes each piece in one
+# language and, where two people talk quickly, can follow one voice and leave out
+# the other; with 28 s pieces whole sentences went missing.
+MAX_PIECE_SECONDS = 10
+# Whisper sometimes repeats the end of a piece into the silence after it
+# ("부모. 부모. 부모. ..."); three or more repeats in a row are written once.
+REPEATS = re.compile(r"(\w.{2,}?)(?:\s*\1){2,}")
 # Audio kept on either side of what the voice detector marks as speech, which
 # it trims so closely that word beginnings and endings were lost.
 CONTEXT_SECONDS = 0.25
@@ -733,14 +736,14 @@ def load_recognizer(name, folder, language, threads):
             language=language, task="transcribe", num_threads=threads)
 
         def recognize(samples):
-            # sherpa-onnx lets Whisper write about 6 tokens per second of input, too few
-            # for fast Korean, so sentence endings were cut off ("...드시고 계"). Silence to
-            # twice the length lifts the cap. Padding to the full 30 s window was a little
-            # more accurate again but made transcription 2.5 to 3 times slower.
-            padded = np.zeros(max(len(samples), min(2 * len(samples),
-                                                    WHISPER_SECONDS * SAMPLE_RATE)), np.float32)
+            # sherpa-onnx lets Whisper write 6 tokens per second of input, and fast Korean
+            # needs about that many, so sentence endings were cut off ("...드시고 계").
+            # Silence to one and a half times the length lifts the cap to 9. Twice the
+            # length left room for repeating a sentence over and over, and padding to the
+            # full 30 s window made Whisper leave out one of two speakers.
+            padded = np.zeros(len(samples) * 3 // 2, np.float32)
             padded[:len(samples)] = samples
-            return tokens(decode(recognizer, padded))
+            return REPEATS.sub(r"\1", tokens(decode(recognizer, padded)))
         return recognize
     if model["kind"] == "sense-voice":
         recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
@@ -759,10 +762,10 @@ class DecodeError(Exception):
 
 def pieces(start, samples):
     """Cuts an utterance longer than MAX_PIECE_SECONDS at the quietest tenth of a second in
-    its last 8 s, so the cut seldom falls inside a word. Yields (start sample, samples)."""
+    its last 6 s, so the cut seldom falls inside a word. Yields (start sample, samples)."""
     import numpy as np
 
-    limit, search, frame = MAX_PIECE_SECONDS * SAMPLE_RATE, 8 * SAMPLE_RATE, SAMPLE_RATE // 10
+    limit, search, frame = MAX_PIECE_SECONDS * SAMPLE_RATE, 6 * SAMPLE_RATE, SAMPLE_RATE // 10
     while len(samples) > limit:
         energy = (samples[limit - search:limit].reshape(-1, frame) ** 2).sum(axis=1)
         cut = limit - search + int(np.argmin(energy)) * frame + frame // 2
@@ -783,7 +786,10 @@ def speech_segments(media, vad_path, progress):
     # mp3 and phone-line audio, and one-syllable answers such as "네". These still
     # found no speech in ten minutes of room tone.
     config.silero_vad.threshold = 0.3
-    config.silero_vad.min_silence_duration = 0.5
+    # A quarter-second pause ends an utterance, so a sentence and the interpreter's reply
+    # in another language become separate pieces. With 0.5 s, 13 of 20 English sentences
+    # in quick Korean-English turn-taking vanished into the Korean around them.
+    config.silero_vad.min_silence_duration = 0.25
     config.silero_vad.min_speech_duration = 0.1
     # Only a soft limit (utterances still ran past 40 s), which pieces() makes hard.
     config.silero_vad.max_speech_duration = 20
@@ -1024,10 +1030,12 @@ def main():
                                    help=f"default {DEFAULT_MODEL}; see the list below")
     transcribe_parser.add_argument(
         "--lang", default="auto",
-        help="auto (default) detects the language of every utterance, which was right on "
-             "every Korean and English test clip. Forcing ko makes Whisper turn English "
-             "speech into Korean, so use it only for recordings that are entirely Korean. "
-             "Other codes: en, tl (Tagalog, whisper models only, untested), ja, zh, ...")
+        help="auto (default) detects the language of each stretch of speech between pauses "
+             "(at most 10 s) and writes the stretch in that one language, so when speakers "
+             "switch languages with hardly a pause a sentence can be left out or written in "
+             "the other language. Forcing ko makes Whisper turn English speech into Korean, "
+             "so use it only for recordings that are entirely Korean. Other codes: en, tl "
+             "(Tagalog, whisper models only, untested), ja, zh, ...")
     transcribe_parser.add_argument("--out-dir", help="folder for the .txt and .srt "
                                                      "(default: next to the input)")
     transcribe_parser.add_argument("--threads", type=int,
